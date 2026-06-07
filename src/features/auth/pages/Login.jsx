@@ -1,8 +1,6 @@
 import AuthLayout from "../../../layouts/AuthLayout";
 import LoginForm from "../components/LoginForm";
-
-// Importe sua logo quando adicionar na pasta assets/images
-// import logoCampoReal from "../../../assets/images/logo-campo-real.png";
+import logoCampo from "../../../assets/images/logoCampo.png";
 
 export default function Login() {
   return (
@@ -10,41 +8,32 @@ export default function Login() {
       <div className="min-h-screen flex flex-col bg-[#3F3DAB]">
         
         {/* Cabeçalho */}
-        <div className="flex flex-col items-center text-white pt-10 pb-8 px-6">
-          
+        <div className="flex flex-col items-center text-white px-6 pt-8 md:pt-10">
+
           {/* Logo */}
-          {/* Quando adicionar a imagem, substituir a div abaixo pelo img */}
-          
-          {/* 
-          <img
-            src={logoCampoReal}
-            alt="Campo Real"
-            className="w-72 mb-6"
-          />
-          */}
-
-          <div className="mb-6 text-center">
-            <h1 className="text-5xl font-serif font-bold">
-              CAMPO REAL
-            </h1>
-
-            <p className="text-lg">
-              Centro Universitário
-            </p>
+          <div className="mb-6 flex justify-center">
+            <img
+              src={logoCampo}
+              alt="Campo Real"
+              className="w-64 md:w-[420px] h-auto"
+            />
           </div>
 
-          <h2 className="text-4xl font-bold text-center">
+          {/* Título */}
+          <h1 className="text-3xl md:text-5xl font-bold text-center">
             Clínica Odontológica
-          </h2>
+          </h1>
 
-          <p className="text-xl mt-2 text-center">
+          <p className="text-lg md:text-2xl mt-2 text-center">
             Sistema Integrado
           </p>
         </div>
 
-        {/* Formulário */}
-        <div className="flex-1">
-          <LoginForm />
+        {/* Área do formulário */}
+        <div className="flex-1 flex items-center justify-center px-4 py-8">
+          <div className="w-full max-w-md md:max-w-lg">
+            <LoginForm />
+          </div>
         </div>
 
       </div>

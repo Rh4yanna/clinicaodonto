@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { Link } from "react-router-dom";
 
 import Input from "../../../components/atoms/Input/Input";
 import PasswordInput from "../../../components/atoms/PasswordInput/PasswordInput";
@@ -14,73 +15,96 @@ export default function LoginForm() {
   const handleSubmit = (e) => {
     e.preventDefault();
 
+    if (!email || !senha || !perfil) {
+      alert("Preencha todos os campos.");
+      return;
+    }
+
     console.log({
       email,
       senha,
       perfil,
     });
+
+    // Futuramente:
+    // authService.login({ email, senha, perfil });
   };
 
   return (
     <div
       className="
-        bg-white
+        bg-[#F5F5F5]
         rounded-t-[40px]
-        min-h-[60vh]
-        px-8
-        py-10
+        md:rounded-[32px]
         shadow-lg
+        p-8
+        w-full
       "
     >
-      <h2 className="text-3xl font-bold text-gray-900">
+      {/* Título */}
+      <h2 className="text-3xl md:text-4xl font-bold text-gray-900 mb-2">
         Bem-vindo(a)!
       </h2>
 
-      <p className="text-gray-500 mt-2 mb-8">
+      <p className="text-gray-600 mb-8">
         Faça login para continuar
       </p>
 
+      {/* Formulário */}
       <form
         onSubmit={handleSubmit}
         className="space-y-5"
       >
+        {/* E-mail */}
         <Input
           type="email"
           placeholder="E-mail"
           value={email}
-          onChange={(e) =>
-            setEmail(e.target.value)
-          }
+          onChange={(e) => setEmail(e.target.value)}
         />
 
+        {/* Senha */}
         <PasswordInput
+          placeholder="Senha"
           value={senha}
-          onChange={(e) =>
-            setSenha(e.target.value)
-          }
+          onChange={(e) => setSenha(e.target.value)}
         />
 
+        {/* Perfil */}
         <ProfileSelect
           value={perfil}
-          onChange={(e) =>
-            setPerfil(e.target.value)
-          }
+          onChange={setPerfil}
         />
 
+        {/* Esqueci senha */}
         <div className="text-center">
-          <button
-            type="button"
+          <Link
+            to="/recuperar-senha"
             className="
-              text-blue-500
+              text-blue-600
               text-sm
               hover:underline
             "
           >
             Esqueci minha senha
-          </button>
+          </Link>
         </div>
 
-        <Button type="submit">
+        {/* Botão */}
+        <Button
+          type="submit"
+          className="
+            w-full
+            h-14
+            bg-amber-500
+            hover:bg-amber-600
+            text-[#3F3DAB]
+            font-bold
+            text-xl
+            rounded-xl
+            transition-all
+          "
+        >
           Entrar
         </Button>
       </form>
