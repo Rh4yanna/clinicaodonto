@@ -1,0 +1,148 @@
+import { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { ArrowLeft, Calendar, MapPin, ChevronRight, Info } from 'lucide-react';
+
+export default function ListaCirurgias() {
+  const navigate = useNavigate();
+  const [dataAtual, setDataAtual] = useState('');
+
+  useEffect(() => {
+    const obterDataFormatada = () => {
+      const data = new Date();
+      const opcoesMêsAno = { day: 'numeric', month: 'long', year: 'numeric' };
+      const dataFormatada = data.toLocaleDateString('pt-BR', opcoesMêsAno);
+      const partes = dataFormatada.split(' de ');
+      if (partes[1]) {
+        partes[1] = partes[1].charAt(0).toUpperCase() + partes[1].slice(1);
+      }
+      return `Hoje, ${partes.join(' de ')}`;
+    };
+    setDataAtual(obterDataFormatada());
+  }, []);
+
+  const cirurgiasHoje = [
+    {
+      id: 1,
+      horario: "08:30",
+      paciente: "Kauan Ferreira",
+      procedimento: "Exodontia - 36",
+      professor: "Prof. Dr. Carlos Eduardo",
+      local: "Centro Cirúrgico"
+    },
+    {
+      id: 2,
+      horario: "15:30",
+      paciente: "Nome do paciente",
+      procedimento: "Extração de siso",
+      professor: "Prof. Dra. Ana Maria",
+      local: "Centro Cirúrgico"
+    }
+  ];
+
+  return (
+    <div className="flex-1 flex flex-col min-h-0 bg-white">
+      {/* TOPO FIXO - Lista de Cirurgias */}
+      <div className="bg-[#3B44A8] pt-10 pb-6 px-6 text-white flex items-center justify-between shadow-md rounded-b-[24px] shrink-0">
+        <button 
+          onClick={() => navigate('/app/aluno')}
+          className="p-1 hover:bg-white/10 rounded-lg transition active:scale-95"
+        >
+          <ArrowLeft size={22} />
+        </button>
+        
+        <h1 className="text-lg font-bold tracking-wide mr-8">Lista de Cirurgias</h1>
+        <div className="w-6"></div>
+      </div>
+
+      {/* CONTEÚDO ROLÁVEL - Lista de Cirurgias */}
+      <div className="flex-1 overflow-y-auto px-5 py-6 space-y-6">
+        
+        {/* Seletor de Data */}
+        <div className="w-full border border-gray-200 rounded-2xl px-4 py-3 flex items-center justify-between shadow-sm bg-white select-none">
+          <span className="text-[#3B44A8] font-bold text-xs">{dataAtual}</span>
+          <Calendar className="text-[#3B44A8]" size={18} />
+        </div>
+
+        {/* Cards de Métricas */}
+        <div className="grid grid-cols-3 gap-2 select-none">
+          <div className="bg-white border border-gray-150 rounded-2xl p-2 text-center shadow-sm">
+            <span className="block text-gray-900 font-extrabold text-[9px] sm:text-[10px] leading-tight truncate">Cirurgias</span>
+            <span className="block text-2xl font-extrabold text-[#3B44A8] my-1">2</span>
+            <span className="block text-[8px] sm:text-[9px] font-semibold text-gray-800">Confirmadas</span>
+          </div>
+          <div className="bg-white border border-gray-150 rounded-2xl p-2 text-center shadow-sm">
+            <span className="block text-gray-900 font-extrabold text-[9px] sm:text-[10px] leading-tight truncate">Concluídas</span>
+            <span className="block text-2xl font-extrabold text-[#3B44A8] my-1">0</span>
+            <span className="block text-[8px] sm:text-[9px] font-semibold text-gray-400">Total</span>
+          </div>
+          <div className="bg-white border border-gray-150 rounded-2xl p-2 text-center shadow-sm">
+            <span className="block text-gray-900 font-extrabold text-[9px] sm:text-[10px] leading-tight truncate">Pendentes</span>
+            <span className="block text-2xl font-extrabold text-[#3B44A8] my-1">1</span>
+            <span className="block text-[8px] sm:text-[9px] font-semibold text-gray-400">Total</span>
+          </div>
+        </div>
+
+        {/* Lista das Cirurgias */}
+        <div className="bg-white border border-gray-200 rounded-2xl overflow-hidden shadow-sm divide-y divide-gray-100">
+          {cirurgiasHoje.map((cirurgia) => (
+            <div 
+              key={cirurgia.id} 
+              onClick={() => navigate('/app/aluno/cirurgias/detalhes')}
+              className="p-4 flex items-center justify-between hover:bg-gray-50 transition cursor-pointer select-none active:bg-gray-100"
+            >
+              {/* Horário à Esquerda */}
+              <div className="text-gray-500 font-medium text-xs w-10 pr-1 text-center shrink-0">
+                {cirurgia.horario}
+              </div>
+              
+              {/* Linha Divisória */}
+              <div className="w-[1px] h-10 bg-gray-200 mr-3 shrink-0"></div>
+              
+              {/* Conteúdo Principal do Card */}
+              <div className="flex-1 flex items-center gap-2.5 min-w-0">
+                {/* Ícone de Usuário */}
+                <div className="w-8 h-8 bg-gray-100 rounded-full border border-gray-200 flex items-center justify-center shrink-0">
+                  <svg className="w-5 h-5 text-gray-400" fill="currentColor" viewBox="0 0 24 24">
+                    <path fillRule="evenodd" d="M12 12a5 5 0 100-10 5 5 0 000 10zm-7 8a7 7 0 0114 0H5z" clipRule="evenodd" />
+                  </svg>
+                </div>
+                
+                {/* Textos Informativos */}
+                <div className="min-w-0 flex-1">
+                  <h4 className="font-bold text-gray-950 text-xs truncate">
+                    {cirurgia.paciente}
+                  </h4>
+                  <p className="text-[#3B44A8] text-[11px] font-semibold truncate">
+                    {cirurgia.procedimento}
+                  </p>
+                  <p className="text-gray-500 text-[9px] font-medium leading-none mt-0.5 truncate">
+                    {cirurgia.professor}
+                  </p>
+                  <div className="flex items-center gap-1 text-[8px] text-gray-400 font-semibold mt-1">
+                    <MapPin size={8} className="text-gray-400 shrink-0" />
+                    <span className="truncate">{cirurgia.local}</span>
+                  </div>
+                </div>
+              </div>
+              
+              {/* Ícone de Flecha para a Direita */}
+              <div className="pl-2 text-[#3B44A8] shrink-0">
+                <ChevronRight size={18} />
+              </div>
+            </div>
+          ))}
+        </div>
+
+        {/* Caixa informativa inferior (CME) */}
+        <div className="bg-[#DCE0F5] p-3.5 rounded-xl flex items-start gap-2.5 border border-[#3B44A8]/10 shadow-inner">
+          <Info className="text-[#3B44A8] shrink-0 mt-0.5" size={16} />
+          <p className="text-[10px] text-[#3B44A8] leading-tight">
+            Chegue ao centro cirúrgico com pelo menos 15 minutos de antecedência.<br />
+            Confira os materiais e a equipe antes de iniciar o procedimento.
+          </p>
+        </div>
+
+      </div>
+    </div>
+  );
+}
