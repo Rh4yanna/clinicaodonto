@@ -1,30 +1,32 @@
 import { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { 
-  ArrowLeft, Search, ChevronRight, CheckCircle2, 
-  CloudDownload, Download, ChevronDown, User, Users, 
-  ShieldCheck, FileText, FileSearch, LogOut, Plus 
+  ArrowLeft, Search, ChevronRight, CloudDownload, Download, 
+  ChevronDown, User, Users, ShieldCheck, FileText, FileSearch, LogOut, Plus 
 } from 'lucide-react';
 
 export default function SettingsManager({ onClose, onLogout }) {
+  const navigate = useNavigate();
+
   // Estado para controlar qual tela está ativa internamente
   const [telaInterna, setTelaInterna] = useState('configuracoes');
   
   // Estados para a tela de Usuários
   const [buscaUsuarios, setBuscaUsuarios] = useState('');
   const [filtroUsuarios, setFiltroUsuarios] = useState('Todos');
-
+  
   // Estados para Permissões
   const [perfilSelecionado, setPerfilSelecionado] = useState('Administrador');
-
+  
   // Estados para Logs
   const [buscaLogs, setBuscaLogs] = useState('');
   const [filtroLogs, setFiltroLogs] = useState('Todos');
-
+  
   // Estados para Auditoria
   const [buscaAuditoria, setBuscaAuditoria] = useState('');
   const [filtroAuditoria, setFiltroAuditoria] = useState('Todos');
 
-  // Dados Mockados - Usuários (Fiéis às telas da sua imagem)
+  // Dados Mockados - Usuários
   const usuariosData = [
     { id: 1, nome: 'Kauan Ferreira', email: 'engs-kauansilva@camporeal.edu.br', perfil: 'Administrador' },
     { id: 2, nome: 'Nome do usuário', email: 'Email', perfil: 'Recepção' },
@@ -121,7 +123,7 @@ export default function SettingsManager({ onClose, onLogout }) {
     }
   ];
 
-  // Filtro protegido de usuários (Reflete as abas da imagem enviada)
+  // Filtro protegido de usuários
   const usuariosFiltrados = (usuariosData || []).filter((u) => {
     if (!u) return false;
     const termoBusca = (buscaUsuarios || '').toLowerCase();
@@ -139,17 +141,35 @@ export default function SettingsManager({ onClose, onLogout }) {
     setTelaInterna(destino);
   };
 
+  const handleVoltarParaDashboard = (e) => {
+    e?.preventDefault();
+    if (onClose) {
+      onClose();
+    } else {
+      navigate('/app/professor/dashboard');
+    }
+  };
+
+  const handleSairSistema = (e) => {
+    e?.preventDefault();
+    if (onLogout) {
+      onLogout();
+    } else {
+      navigate('/login');
+    }
+  };
+
   return (
-    <div className="fixed inset-0 z-[9999] bg-[#F8F9FD] flex flex-col h-full overflow-hidden pointer-events-auto">
+    <div className="w-full h-full bg-[#F8F9FD] flex flex-col overflow-hidden relative">
       
       {/* 1. TELA PRINCIPAL DE CONFIGURAÇÕES */}
       {telaInterna === 'configuracoes' && (
-        <div className="flex-1 flex flex-col h-full">
-          <div className="bg-[#3B44A8] pt-12 pb-10 px-6 text-white rounded-b-[28px] shadow-md shrink-0 relative">
+        <div className="flex-1 flex flex-col h-full overflow-hidden">
+          <div className="bg-[#3B44A8] pt-8 pb-6 px-6 text-white rounded-b-[28px] shadow-md shrink-0 relative">
             <div className="flex items-center justify-center relative">
               <button 
                 type="button"
-                onClick={onClose}
+                onClick={handleVoltarParaDashboard}
                 className="absolute left-0 p-2 hover:bg-white/10 rounded-xl transition active:scale-95 cursor-pointer"
               >
                 <ArrowLeft size={22} />
@@ -159,15 +179,24 @@ export default function SettingsManager({ onClose, onLogout }) {
           </div>
 
           <div className="flex-1 overflow-y-auto px-4 pt-6 pb-24 space-y-6 scrollbar-hide">
-            <div className="bg-white border border-gray-100 rounded-3xl p-4 flex items-center gap-4 shadow-sm">
-              <div className="w-14 h-14 rounded-full border-2 border-gray-200 flex items-center justify-center bg-gray-50 text-gray-700 shrink-0">
-                <User size={30} />
+            
+            {/* CARD DE USUÁRIO */}
+            <button 
+              type="button"
+              onClick={(e) => navegarPara(e, 'usuarios')}
+              className="w-full bg-white border border-gray-100 rounded-3xl p-4 flex items-center justify-between shadow-sm hover:bg-gray-50 active:scale-[0.99] transition cursor-pointer text-left select-none"
+            >
+              <div className="flex items-center gap-4">
+                <div className="w-14 h-14 rounded-full border-2 border-gray-200 flex items-center justify-center bg-gray-50 text-gray-700 shrink-0">
+                  <User size={30} />
+                </div>
+                <div>
+                  <h3 className="text-base font-black text-gray-900">Kauan Ferreira</h3>
+                  <p className="text-xs font-semibold text-gray-500">Administrador / Professor</p>
+                </div>
               </div>
-              <div>
-                <h3 className="text-base font-black text-gray-900">Kauan Ferreira</h3>
-                <p className="text-xs font-semibold text-gray-500">Administrador / Professor</p>
-              </div>
-            </div>
+              <ChevronRight size={20} className="text-[#3B44A8] shrink-0" />
+            </button>
 
             <div className="space-y-3">
               <h3 className="text-[#3B44A8] font-black text-sm px-1">Configurações do sistema</h3>
@@ -258,7 +287,7 @@ export default function SettingsManager({ onClose, onLogout }) {
 
             <button 
               type="button"
-              onClick={onLogout}
+              onClick={handleSairSistema}
               className="w-full bg-[#F59E0B] hover:bg-amber-600 active:scale-[0.98] text-white py-3.5 px-4 rounded-2xl font-black text-sm flex items-center justify-center gap-2 shadow-sm transition cursor-pointer"
             >
               <LogOut size={18} />
@@ -268,11 +297,10 @@ export default function SettingsManager({ onClose, onLogout }) {
         </div>
       )}
 
-      {/* 2. TELA DE USUÁRIOS (FIEL AO FIGMA/IMAGEM) */}
+      {/* 2. TELA DE USUÁRIOS */}
       {telaInterna === 'usuarios' && (
-        <div className="flex-1 flex flex-col h-full bg-[#F8F9FD]">
-          {/* Header */}
-          <div className="bg-[#3B44A8] pt-12 pb-10 px-6 text-white rounded-b-[28px] shadow-md shrink-0 relative">
+        <div className="flex-1 flex flex-col h-full bg-[#F8F9FD] overflow-hidden">
+          <div className="bg-[#3B44A8] pt-8 pb-6 px-6 text-white rounded-b-[28px] shadow-md shrink-0 relative">
             <div className="flex items-center justify-center relative">
               <button 
                 type="button"
@@ -284,11 +312,7 @@ export default function SettingsManager({ onClose, onLogout }) {
               <h1 className="text-xl font-bold tracking-wide">Usuários</h1>
             </div>
           </div>
-
-          {/* Body */}
           <div className="flex-1 overflow-y-auto px-4 pt-5 pb-24 space-y-4 scrollbar-hide">
-            
-            {/* Campo de Busca */}
             <div className="relative">
               <Search size={20} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400" />
               <input 
@@ -299,8 +323,6 @@ export default function SettingsManager({ onClose, onLogout }) {
                 className="w-full bg-white border border-gray-200 rounded-2xl py-3 pl-11 pr-4 text-xs font-medium placeholder-gray-400 focus:outline-none focus:border-[#3B44A8] transition shadow-xs"
               />
             </div>
-
-            {/* Pílulas de Filtro (Botões) */}
             <div className="flex items-center gap-2 overflow-x-auto pb-1 scrollbar-hide">
               {['Todos', 'Recepção', 'Administrador', 'Aluno'].map((f) => (
                 <button
@@ -311,14 +333,11 @@ export default function SettingsManager({ onClose, onLogout }) {
                     filtroUsuarios === f 
                       ? 'bg-[#3B44A8] text-white shadow-xs' 
                       : 'bg-gray-200/80 text-gray-600 hover:bg-gray-300'
-                  }`}
-                >
+                  }`}>
                   {f}
                 </button>
               ))}
             </div>
-
-            {/* Lista Unificada de Usuários */}
             <div className="bg-white border border-gray-100 rounded-3xl p-2 shadow-sm divide-y divide-gray-100">
               {usuariosFiltrados.map((item) => (
                 <div key={item.id} className="p-3.5 flex items-center justify-between gap-3 hover:bg-gray-50/60 transition rounded-2xl cursor-pointer">
@@ -335,23 +354,21 @@ export default function SettingsManager({ onClose, onLogout }) {
                   <ChevronRight size={18} className="text-[#3B44A8] shrink-0" />
                 </div>
               ))}
-
               {usuariosFiltrados.length === 0 && (
                 <div className="py-8 text-center text-xs font-semibold text-gray-400">
                   Nenhum usuário encontrado para esta categoria.
                 </div>
               )}
             </div>
-
-            {/* Botão Amarelo de Adicionar (Exibido na visualização geral "Todos") */}
             {filtroUsuarios === 'Todos' && (
               <button 
                 type="button"
+                onClick={() => navigate('/app/professor/configuracoes/novo-usuario')}
                 className="w-full bg-[#F59E0B] hover:bg-amber-600 active:scale-[0.98] text-white py-3.5 px-4 rounded-2xl font-black text-sm flex items-center justify-center gap-1.5 shadow-sm transition cursor-pointer mt-2"
-              >
+                >
                 <Plus size={18} />
                 <span>Adicionar usuário</span>
-              </button>
+                </button>
             )}
           </div>
         </div>
@@ -359,20 +376,18 @@ export default function SettingsManager({ onClose, onLogout }) {
 
       {/* 3. TELA DE LOGS */}
       {telaInterna === 'logs' && (
-        <div className="flex-1 flex flex-col h-full">
-          <div className="bg-[#3B44A8] pt-12 pb-10 px-6 text-white rounded-b-[28px] shadow-md shrink-0 relative">
+        <div className="flex-1 flex flex-col h-full overflow-hidden">
+          <div className="bg-[#3B44A8] pt-8 pb-6 px-6 text-white rounded-b-[28px] shadow-md shrink-0 relative">
             <div className="flex items-center justify-center relative">
               <button 
                 type="button"
                 onClick={(e) => navegarPara(e, 'configuracoes')}
-                className="absolute left-0 p-2 hover:bg-white/10 rounded-xl transition active:scale-95 cursor-pointer"
-              >
+                className="absolute left-0 p-2 hover:bg-white/10 rounded-xl transition active:scale-95 cursor-pointer">
                 <ArrowLeft size={22} />
               </button>
               <h1 className="text-xl font-bold tracking-wide">Logs</h1>
             </div>
           </div>
-
           <div className="flex-1 overflow-y-auto px-4 pt-5 pb-24 space-y-4 scrollbar-hide">
             <div className="relative">
               <Search size={20} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400" />
@@ -381,10 +396,8 @@ export default function SettingsManager({ onClose, onLogout }) {
                 placeholder="Buscar logs"
                 value={buscaLogs}
                 onChange={(e) => setBuscaLogs(e.target.value)}
-                className="w-full bg-white border border-gray-200 rounded-2xl py-3 pl-11 pr-4 text-xs font-medium placeholder-gray-400 focus:outline-none focus:border-[#3B44A8] transition shadow-xs"
-              />
+                className="w-full bg-white border border-gray-200 rounded-2xl py-3 pl-11 pr-4 text-xs font-medium placeholder-gray-400 focus:outline-none focus:border-[#3B44A8] transition shadow-xs"/>
             </div>
-
             <div className="flex items-center gap-1.5 overflow-x-auto pb-1 scrollbar-hide">
               {['Todos', 'Login', 'Cadastro', 'Alteração', 'Exclusão'].map((f) => (
                 <button
@@ -399,7 +412,6 @@ export default function SettingsManager({ onClose, onLogout }) {
                 </button>
               ))}
             </div>
-
             {dadosLogs.map((grupo, gIdx) => (
               <div key={gIdx} className="space-y-2 pt-1">
                 <h3 className="text-[#3B44A8] font-bold text-xs px-1">{grupo.data}</h3>
@@ -425,20 +437,18 @@ export default function SettingsManager({ onClose, onLogout }) {
 
       {/* 4. TELA DE AUDITORIA */}
       {telaInterna === 'auditoria' && (
-        <div className="flex-1 flex flex-col h-full">
-          <div className="bg-[#3B44A8] pt-12 pb-10 px-6 text-white rounded-b-[28px] shadow-md shrink-0 relative">
+        <div className="flex-1 flex flex-col h-full overflow-hidden">
+          <div className="bg-[#3B44A8] pt-8 pb-6 px-6 text-white rounded-b-[28px] shadow-md shrink-0 relative">
             <div className="flex items-center justify-center relative">
               <button 
                 type="button"
                 onClick={(e) => navegarPara(e, 'configuracoes')}
-                className="absolute left-0 p-2 hover:bg-white/10 rounded-xl transition active:scale-95 cursor-pointer"
-              >
+                className="absolute left-0 p-2 hover:bg-white/10 rounded-xl transition active:scale-95 cursor-pointer">
                 <ArrowLeft size={22} />
               </button>
               <h1 className="text-xl font-bold tracking-wide">Auditoria</h1>
             </div>
           </div>
-
           <div className="flex-1 overflow-y-auto px-4 pt-5 pb-24 space-y-4 scrollbar-hide">
             <div className="relative">
               <Search size={20} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400" />
@@ -450,7 +460,6 @@ export default function SettingsManager({ onClose, onLogout }) {
                 className="w-full bg-white border border-gray-200 rounded-2xl py-3 pl-11 pr-4 text-xs font-medium placeholder-gray-400 focus:outline-none focus:border-[#3B44A8] transition shadow-xs"
               />
             </div>
-
             <div className="flex items-center gap-1.5 overflow-x-auto pb-1 scrollbar-hide">
               {['Todos', 'Dados', 'Permissões', 'Acessos', 'Sistema'].map((f) => (
                 <button
@@ -465,7 +474,6 @@ export default function SettingsManager({ onClose, onLogout }) {
                 </button>
               ))}
             </div>
-
             {dadosAuditoria.map((grupo, gIdx) => (
               <div key={gIdx} className="space-y-2 pt-1">
                 <h3 className="text-[#3B44A8] font-bold text-xs px-1">{grupo.data}</h3>
@@ -491,20 +499,18 @@ export default function SettingsManager({ onClose, onLogout }) {
 
       {/* 5. TELA DE BACKUP */}
       {telaInterna === 'backup' && (
-        <div className="flex-1 flex flex-col h-full">
-          <div className="bg-[#3B44A8] pt-12 pb-10 px-6 text-white rounded-b-[28px] shadow-md shrink-0 relative">
+        <div className="flex-1 flex flex-col h-full overflow-hidden">
+          <div className="bg-[#3B44A8] pt-8 pb-6 px-6 text-white rounded-b-[28px] shadow-md shrink-0 relative">
             <div className="flex items-center justify-center relative">
               <button 
                 type="button"
                 onClick={(e) => navegarPara(e, 'configuracoes')}
-                className="absolute left-0 p-2 hover:bg-white/10 rounded-xl transition active:scale-95 cursor-pointer"
-              >
+                className="absolute left-0 p-2 hover:bg-white/10 rounded-xl transition active:scale-95 cursor-pointer">
                 <ArrowLeft size={22} />
               </button>
               <h1 className="text-xl font-bold tracking-wide">Backup</h1>
             </div>
           </div>
-
           <div className="flex-1 overflow-y-auto px-4 pt-6 pb-24 space-y-5 scrollbar-hide">
             <div className="bg-white border border-gray-100 rounded-3xl divide-y divide-gray-100 shadow-sm overflow-hidden">
               <div className="p-4 space-y-0.5">
@@ -516,7 +522,6 @@ export default function SettingsManager({ onClose, onLogout }) {
                 <p className="text-xs font-bold text-[#3B44A8]">20/05/2026 às 07:00</p>
               </div>
             </div>
-
             <button 
               type="button"
               className="w-full bg-[#F59E0B] hover:bg-amber-600 active:scale-[0.98] text-white py-3.5 px-4 rounded-2xl font-black text-sm flex items-center justify-center gap-2 shadow-sm transition cursor-pointer"
@@ -524,7 +529,6 @@ export default function SettingsManager({ onClose, onLogout }) {
               <CloudDownload size={22} />
               <span>Realizar backup agora</span>
             </button>
-
             <div className="space-y-2.5">
               <h3 className="text-[#3B44A8] font-bold text-sm px-1">Backups disponíveis</h3>
               <div className="bg-white border border-gray-100 rounded-3xl p-4 shadow-sm divide-y divide-gray-100">
@@ -540,7 +544,6 @@ export default function SettingsManager({ onClose, onLogout }) {
                 ))}
               </div>
             </div>
-
             <div className="space-y-3">
               <h3 className="text-[#3B44A8] font-bold text-sm px-1">Configurações de backup</h3>
               <div className="grid grid-cols-2 gap-3">
@@ -551,7 +554,6 @@ export default function SettingsManager({ onClose, onLogout }) {
                     <ChevronDown size={18} className="text-[#3B44A8]" />
                   </div>
                 </div>
-
                 <div className="space-y-1">
                   <label className="text-[11px] font-bold text-[#3B44A8] px-1">Horário</label>
                   <div className="bg-white border border-gray-200 rounded-2xl p-3 flex items-center justify-between shadow-xs cursor-pointer">
@@ -560,7 +562,6 @@ export default function SettingsManager({ onClose, onLogout }) {
                   </div>
                 </div>
               </div>
-
               <div className="space-y-1 pt-1">
                 <label className="text-[11px] font-bold text-[#3B44A8] px-1">Manter backups por</label>
                 <div className="bg-white border border-gray-200 rounded-2xl p-3 flex items-center justify-between shadow-xs cursor-pointer">
@@ -575,20 +576,18 @@ export default function SettingsManager({ onClose, onLogout }) {
 
       {/* 6. TELA DE PERMISSÕES */}
       {telaInterna === 'permissoes' && (
-        <div className="flex-1 flex flex-col h-full">
-          <div className="bg-[#3B44A8] pt-12 pb-10 px-6 text-white rounded-b-[28px] shadow-md shrink-0 relative">
+        <div className="flex-1 flex flex-col h-full overflow-hidden">
+          <div className="bg-[#3B44A8] pt-8 pb-6 px-6 text-white rounded-b-[28px] shadow-md shrink-0 relative">
             <div className="flex items-center justify-center relative">
               <button 
                 type="button"
                 onClick={(e) => navegarPara(e, 'configuracoes')}
-                className="absolute left-0 p-2 hover:bg-white/10 rounded-xl transition active:scale-95 cursor-pointer"
-              >
+                className="absolute left-0 p-2 hover:bg-white/10 rounded-xl transition active:scale-95 cursor-pointer">
                 <ArrowLeft size={22} />
               </button>
               <h1 className="text-xl font-bold tracking-wide">Permissões</h1>
             </div>
           </div>
-
           <div className="flex-1 overflow-y-auto px-4 pt-6 pb-24 space-y-6 scrollbar-hide">
             <div className="bg-white border border-gray-100 rounded-3xl divide-y divide-gray-100 shadow-sm overflow-hidden">
               {perfis.map((item) => (
@@ -598,13 +597,11 @@ export default function SettingsManager({ onClose, onLogout }) {
                   onClick={() => setPerfilSelecionado(item.id)}
                   className={`w-full p-4 flex items-center justify-between transition text-left active:bg-gray-100 cursor-pointer ${
                     perfilSelecionado === item.id ? 'bg-indigo-50/50' : 'hover:bg-gray-50'
-                  }`}
-                >
+                  }`}>
                   <div>
                     <h4 className="text-sm font-bold text-[#3B44A8]">{item.titulo}</h4>
                     <p className="text-[11px] text-gray-400 font-medium">{item.desc}</p>
                   </div>
-
                   <div className="flex items-center gap-2">
                     <span className="bg-[#3B44A8]/10 text-[#3B44A8] text-[10px] font-bold px-2.5 py-1 rounded-full whitespace-nowrap">
                       {item.usuarios}
@@ -614,7 +611,6 @@ export default function SettingsManager({ onClose, onLogout }) {
                 </button>
               ))}
             </div>
-
             <div className="space-y-3">
               <div className="flex items-center justify-between px-1">
                 <h3 className="text-[#3B44A8] font-black text-xs">
@@ -624,15 +620,11 @@ export default function SettingsManager({ onClose, onLogout }) {
                   {perfilSelecionado}
                 </span>
               </div>
-
               <div className="bg-white border border-gray-100 rounded-3xl p-5 shadow-sm space-y-4">
                 {permissoesPorPerfil[perfilSelecionado]?.map((perm, index) => (
-                  <div key={index} className="flex items-center gap-3">
-                    <CheckCircle2 size={22} className="text-emerald-500 shrink-0" />
-                    <div>
-                      <h4 className="text-xs font-black text-[#3B44A8] leading-tight">{perm.modulo}</h4>
-                      <p className="text-[10px] text-gray-400 font-medium">{perm.nivel}</p>
-                    </div>
+                  <div key={index} className="flex items-center justify-between border-b border-gray-50 pb-3 last:pb-0 last:border-0">
+                    <span className="text-xs font-bold text-gray-900">{perm.modulo}</span>
+                    <span className="text-xs font-semibold text-[#3B44A8]">{perm.nivel}</span>
                   </div>
                 ))}
               </div>
