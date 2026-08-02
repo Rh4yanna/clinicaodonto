@@ -1,7 +1,7 @@
 import { useNavigate } from 'react-router-dom';
 import { ArrowLeft, Info } from 'lucide-react';
 
-export default function MateriaisCadastrados() {
+export default function MateriaisCadastradosProfessor() {
   const navigate = useNavigate();
 
   const materiaisBase = [
@@ -80,10 +80,11 @@ export default function MateriaisCadastrados() {
   return (
     <div className="flex-1 flex flex-col min-h-0 bg-white">
       
+      {/* TOPO FIXO DE NAVEGAÇÃO */}
       <div className="bg-[#3B44A8] pt-12 pb-6 px-6 text-white flex items-center justify-between shadow-md rounded-b-[24px] shrink-0 select-none">
         <button 
           type="button"
-          onClick={() => navigate('/app/aluno/estoque')}
+          onClick={() => navigate('/app/professor/estoque')}
           className="p-1 hover:bg-white/10 rounded-lg transition active:scale-95"
         >
           <ArrowLeft size={24} />
@@ -92,8 +93,10 @@ export default function MateriaisCadastrados() {
         <div className="w-6"></div>
       </div>
 
+      {/* CONTEÚDO ROLÁVEL */}
       <div className="flex-1 overflow-y-auto px-5 py-5 space-y-5 pb-24">
         
+        {/* CARD INFORMATIVO */}
         <div className="bg-[#DCE0F5] text-[#3B44A8] p-4 rounded-2xl flex items-start gap-3 shadow-sm border border-[#3B44A8]/10 select-none">
           <Info size={20} className="shrink-0 mt-0.5" />
           <p className="text-[11px] font-bold leading-relaxed">
@@ -101,6 +104,7 @@ export default function MateriaisCadastrados() {
           </p>
         </div>
 
+        {/* LISTAGEM DE MATERIAIS */}
         <div className="space-y-4">
           <h2 className="text-[#3B44A8] font-bold text-sm tracking-wide select-none">
             Materiais recentes
@@ -110,7 +114,7 @@ export default function MateriaisCadastrados() {
             {materiaisOrdenados.map((item) => (
               <div
                 key={item.id}
-                onClick={() => navigate('/app/aluno/estoque/configurar-etiqueta', { state: { material: item } })}
+                onClick={() => navigate('/app/professor/estoque/configurar-etiqueta', { state: { material: item } })}
                 className="bg-white border border-gray-150 rounded-2xl p-4 shadow-sm flex gap-4 hover:border-gray-300 transition active:scale-[0.99] cursor-pointer relative"
               >
                 <img 

@@ -1,18 +1,29 @@
 import { useState } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { ArrowLeft, ChevronRight, Plus, Minus } from 'lucide-react';
+import { ArrowLeft, ChevronRight, Plus, Minus, Check } from 'lucide-react';
 
 export default function DetalhesAtendimento() {
   const navigate = useNavigate();
   const location = useLocation();
   
-  // Resgata o paciente vindo da navegação ou define um padrão baseado no seu print
+  // Resgata o paciente vindo da navegação
   const paciente = location.state?.paciente || {
     nome: 'Nome do paciente',
     cpf: '012.123.456-89',
     telefone: '(42) 99999-7777',
     procedimento: 'Clareamento Dental'
   };
+
+  // ESTADO DO STATUS ATUAL (0 = Agendado, 1 = Em andamento, 2 = Finalizado, 3 = Cancelado)
+  const [statusAtual, setStatusAtual] = useState(1);
+
+  // Lista dos passos do status
+  const listaStatus = [
+    { id: 0, label: 'Agendado', hora: '06/05/2026\n08:45' },
+    { id: 1, label: 'Em andamento', hora: '09:00' },
+    { id: 2, label: 'Finalizado', hora: '' },
+    { id: 3, label: 'Cancelado', hora: '' }
+  ];
 
   // Estado para controlar as quantidades dos materiais previstos
   const [materiais, setMateriais] = useState([
@@ -29,6 +40,12 @@ export default function DetalhesAtendimento() {
       }
       return m;
     }));
+  };
+
+  // Calcula a porcentagem de preenchimento da barra verde de progresso
+  const calcularLarguraProgresso = () => {
+    if (statusAtual === 0) return '0%';
+    return `${(statusAtual / (listaStatus.length - 1)) * 100}%`;
   };
 
   return (
@@ -155,46 +172,64 @@ export default function DetalhesAtendimento() {
           </div>
         </div>
 
-        {/* STATUS DO ATENDIMENTO */}
+        {/* STATUS DO ATENDIMENTO (INTERATIVO E DINÂMICO) */}
         <div className="space-y-3 pt-2">
           <h2 className="text-[#3B44A8] font-black text-xs px-1">Status do Atendimento</h2>
           
-          <div className="relative flex items-center justify-between px-2 select-none">
-            {/* Linha de fundo cinza */}
-            <div className="absolute left-6 right-6 top-[13px] h-[2px] bg-gray-200 -z-10"></div>
+          <div className="relative flex items-center justify-between px-4 select-none">
+            {/* Linha base cinza */}
+            <div className="absolute left-8 right-8 top-[13px] h-[2px] bg-gray-200 -z-10"></div>
             
-            {/* Linha de progresso ativa */}
-            <div className="absolute left-6 w-[30%] top-[13px] h-[2px] bg-[#3B44A8] -z-10"></div>
+            {/* Linha de progresso verde (dinâmica) */}
+            <div 
+              className="absolute left-8 top-[13px] h-[2px] bg-emerald-500 transition-all duration-300 -z-10"
+              style={{ width: `calc(${calcularLarguraProgresso()} - 16px)` }}
+            ></div>
 
-            {/* Step 1: Agendado */}
-            <div className="flex flex-col items-center text-center w-16">
-              <div className="w-7 h-7 rounded-full bg-[#3B44A8] border-4 border-white shadow-sm flex items-center justify-center text-white">
-                <div className="w-1.5 h-1.5 bg-white rounded-full"></div>
-              </div>
-              <span className="text-[9px] font-black text-gray-950 mt-1.5 leading-tight">Agendado</span>
-              <span className="text-[7.5px] text-gray-400 font-bold mt-0.5 leading-none">06/05/2026<br />08:45</span>
-            </div>
+            {/* Renderização dos Passos */}
+            {listaStatus.map((step) => {
+              const isAtual = step.id === statusAtual;
+              const isAnterior = step.id < statusAtual;
 
-            {/* Step 2: Em andamento */}
-            <div className="flex flex-col items-center text-center w-20">
-              <div className="w-7 h-7 rounded-full bg-orange-500 border-4 border-white shadow-sm flex items-center justify-center text-white">
-                <div className="w-1.5 h-1.5 bg-white rounded-full"></div>
-              </div>
-              <span className="text-[9px] font-black text-gray-950 mt-1.5 leading-tight">Em andamento</span>
-              <span className="text-[7.5px] text-gray-400 font-bold mt-0.5 leading-none">09:00</span>
-            </div>
+              return (
+                <div 
+                  key={step.id} 
+                  onClick={() => setStatusAtual(step.id)}
+                  className="flex flex-col items-center text-center cursor-pointer group w-16"
+                >
+                  {/* Círculo do Status */}
+                  <div 
+                    className={`w-7 h-7 rounded-full border-4 border-white shadow-sm flex items-center justify-center text-white transition-all duration-300 active:scale-90 ${
+                      isAtual 
+                        ? 'bg-orange-500 scale-110' 
+                        : isAnterior 
+                        ? 'bg-emerald-500' 
+                        : 'bg-gray-200 group-hover:bg-gray-300'
+                    }`}
+                  >
+                    {isAnterior ? (
+                      <Check size={12} className="stroke-[3px]" />
+                    ) : isAtual ? (
+                      <div className="w-1.5 h-1.5 bg-white rounded-full"></div>
+                    ) : null}
+                  </div>
 
-            {/* Step 3: Finalizado */}
-            <div className="flex flex-col items-center text-center w-16">
-              <div className="w-7 h-7 rounded-full bg-gray-200 border-4 border-white shadow-sm flex items-center justify-center"></div>
-              <span className="text-[9px] font-bold text-gray-400 mt-1.5 leading-tight">Finalizado</span>
-            </div>
+                  {/* Nome do Status */}
+                  <span className={`text-[9px] mt-1.5 leading-tight transition-colors ${
+                    isAtual ? 'font-black text-orange-600' : isAnterior ? 'font-black text-emerald-600' : 'font-bold text-gray-400'
+                  }`}>
+                    {step.label}
+                  </span>
 
-            {/* Step 4: Cancelado */}
-            <div className="flex flex-col items-center text-center w-16">
-              <div className="w-7 h-7 rounded-full bg-gray-200 border-4 border-white shadow-sm flex items-center justify-center"></div>
-              <span className="text-[9px] font-bold text-gray-400 mt-1.5 leading-tight">Cancelado</span>
-            </div>
+                  {/* Horário (se houver) */}
+                  {step.hora && (
+                    <span className="text-[7.5px] text-gray-400 font-bold mt-0.5 leading-none whitespace-pre-line">
+                      {step.hora}
+                    </span>
+                  )}
+                </div>
+              );
+            })}
           </div>
         </div>
 

@@ -16,6 +16,41 @@ import {
 export default function GerenciadorCirurgias() {
   const navigate = useNavigate();
 
+  // Estado com a data selecionada (inicia com a data atual do sistema)
+  const [dataSelecionada, setDataSelecionada] = useState(new Date());
+
+  // Função para formatar no padrão "Hoje, 28 de Julho de 2026"
+  const formatarDataExtenso = (date) => {
+    const hoje = new Date();
+    const ehHoje = 
+      date.getDate() === hoje.getDate() &&
+      date.getMonth() === hoje.getMonth() &&
+      date.getFullYear() === hoje.getFullYear();
+
+    const dataFormatada = date.toLocaleDateString('pt-BR', {
+      day: 'numeric',
+      month: 'long',
+      year: 'numeric'
+    });
+    
+    // Capitaliza a primeira letra do mês (ex: "julho" -> "Julho")
+    const partes = dataFormatada.split(' de ');
+    if (partes[1]) {
+      partes[1] = partes[1].charAt(0).toUpperCase() + partes[1].slice(1);
+    }
+
+    const dataFinal = partes.join(' de ');
+    return ehHoje ? `Hoje, ${dataFinal}` : dataFinal;
+  };
+
+  // Handler para alterar a data ao escolher no calendário
+  const handleDataChange = (e) => {
+    if (e.target.value) {
+      const [year, month, day] = e.target.value.split('-').map(Number);
+      setDataSelecionada(new Date(year, month - 1, day));
+    }
+  };
+
   const handleVoltar = () => {
     if (window.history.length > 1) {
       navigate(-1);
@@ -28,7 +63,7 @@ export default function GerenciadorCirurgias() {
     {
       id: 1,
       horario: '08:30',
-      paciente: 'Kauan Ferreira',
+      paciente: 'Rhaya Borges',
       procedimento: 'Exodontia - 36',
       professor: 'Prof: Dr. Carlos Eduardo',
       local: 'Centro Cirúrgico'
@@ -63,12 +98,20 @@ export default function GerenciadorCirurgias() {
       {/* Corpo Principal */}
       <div className="bg-white text-slate-800 rounded-t-[32px] px-4 pt-6 pb-6 flex-1 flex flex-col space-y-4">
         
-        {/* Seletor 1: Data */}
-        <div className="flex items-center justify-between border border-slate-200 rounded-2xl px-4 py-3 bg-white shadow-sm">
+        {/* Seletor 1: Data Dinâmica */}
+        <div className="relative flex items-center justify-between border border-slate-200 rounded-2xl px-4 py-3 bg-white shadow-sm hover:border-indigo-300 transition">
           <span className="text-[#3B42B2] font-semibold text-sm">
-            Hoje, 25 de Maio de 2026
+            {formatarDataExtenso(dataSelecionada)}
           </span>
           <CalendarIcon className="w-5 h-5 text-[#3B42B2]" />
+
+          {/* Input invisível cobrindo o card para acionar o calendário ao clicar */}
+          <input 
+            type="date"
+            value={dataSelecionada.toISOString().split('T')[0]}
+            onChange={handleDataChange}
+            className="absolute inset-0 opacity-0 w-full h-full cursor-pointer"
+          />
         </div>
 
         {/* Seletor 2: Mutirão Cirúrgico */}
@@ -103,7 +146,7 @@ export default function GerenciadorCirurgias() {
           </div>
         </div>
 
-        {/* Lista de Cirurgias (Abre os detalhes ao clicar) */}
+        {/* Lista de Cirurgias */}
         <div className="border border-slate-200 rounded-2xl bg-white shadow-sm divide-y divide-slate-100 overflow-hidden">
           {cirurgias.map((item) => (
             <div

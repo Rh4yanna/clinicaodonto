@@ -61,7 +61,7 @@ export default function DetalhesCirurgiaProfessor() {
                 <User className="text-gray-500" size={24} />
               </div>
               <div>
-                <h2 className="font-extrabold text-gray-950 text-sm leading-snug">Kauan Ferreira</h2>
+                <h2 className="font-extrabold text-gray-950 text-sm leading-snug">Rhaya Borges</h2>
                 <p className="text-gray-400 text-[10px] font-semibold">012.123.456-89</p>
               </div>
             </div>

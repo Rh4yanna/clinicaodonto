@@ -50,7 +50,7 @@ export default function DashboardRecepcao() {
         
         {/* Boas-Vindas */}
         <div className="select-none">
-          <h2 className="text-gray-900 text-3xl font-black tracking-tight leading-none">Olá, Kauan</h2>
+          <h2 className="text-gray-900 text-3xl font-black tracking-tight leading-none">Olá, Rhay</h2>
           <p className="text-gray-500 text-sm font-medium mt-1.5">Gerenciamento e fluxo da recepção da clínica.</p>
         </div>
 
@@ -110,7 +110,7 @@ export default function DashboardRecepcao() {
             
             <div className="bg-white border border-gray-200 rounded-2xl overflow-hidden shadow-sm divide-y divide-gray-100">
               {[
-                { hora: "08:30", nome: "Kauan Ferreira", proc: "Clareamento Dental", esp: "Dentística" },
+                { hora: "08:30", nome: "Rhaya Borges", proc: "Clareamento Dental", esp: "Dentística" },
                 { hora: "08:50", nome: "Nome do paciente", proc: "Restauração", esp: "Dentística" },
                 { hora: "08:50", nome: "Nome do paciente", proc: "Tratamento de Canal", esp: "Ortodontia" }
               ].map((p, idx) => (

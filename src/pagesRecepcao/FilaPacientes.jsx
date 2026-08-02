@@ -86,7 +86,7 @@ export default function FilaPacientes() {
             {/* Lista da Fila de Espera */}
             <div className="bg-white border border-gray-200 rounded-2xl overflow-hidden shadow-sm divide-y divide-gray-100">
               {[
-                { hora: "08:30", nome: "Kauan Ferreira", proc: "Clareamento Dental", esp: "Dentística", tempo: "30 min de espera" },
+                { hora: "08:30", nome: "Rhaya Borges", proc: "Clareamento Dental", esp: "Dentística", tempo: "30 min de espera" },
                 { hora: "08:50", nome: "Nome do paciente", proc: "Restauração", esp: "Dentística", tempo: "10 min de espera" },
                 { hora: "08:50", nome: "Nome do paciente", proc: "Tratamento de Canal", esp: "Ortodontia", tempo: "Aguardando" }
               ].map((p, idx) => (

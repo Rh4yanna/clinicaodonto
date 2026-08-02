@@ -31,14 +31,14 @@ export default function DetalhesPacienteProfessor() {
 
   // Dados Mockados do Paciente
   const [paciente] = useState({
-    nomeHeader: 'Kauan Ferreira',
+    nomeHeader: 'Rhaya Borges',
     cpfHeader: '012.123.456-89',
     status: 'Ativo', // 'Ativo' ou 'Inativo'
     
     // Resumo
-    nomeCompleto: 'Kauan Ferreira da Silva',
+    nomeCompleto: 'Rhaya Borges',
     telefone: '(42) 99999-9999',
-    email: 'engs-kauansilva@camporeal.edu.br',
+    email: 'engs-rhayannatonete@camporeal.edu.br',
     dataNascimento: '14/02/2005',
     endereco: {
       rua: 'Rua Diogo Emanoel de Almeida, 200',
@@ -507,7 +507,7 @@ export default function DetalhesPacienteProfessor() {
 
             {/* ================= ABA 3: DOCUMENTOS ================= */}
             {abaAtiva === 'documentos' && (
-              <div className="flex-1 flex flex-col space-y-4 relative">
+              <div className="flex-1 flex flex-col space-y-4 relative min-h-[350px]">
                 
                 {/* BUSCA DE DOCUMENTO */}
                 <div className="flex items-center justify-between gap-2">
@@ -548,7 +548,7 @@ export default function DetalhesPacienteProfessor() {
                 </div>
 
                 {/* LISTA DE DOCUMENTOS */}
-                <div className="space-y-3 flex-1">
+                <div className="space-y-3 flex-1 pb-16">
                   {documentosFiltrados.length > 0 ? (
                     documentosFiltrados.map((doc) => (
                       <div
@@ -631,11 +631,11 @@ export default function DetalhesPacienteProfessor() {
                   )}
                 </div>
 
-                {/* BOTÃO FLUTUANTE (FAB) - ENVIAR */}
-                <div className="fixed bottom-24 right-6 z-10">
-                  <button className="w-16 h-16 bg-[#F59E0B] hover:bg-amber-600 text-white rounded-full shadow-lg flex flex-col items-center justify-center transition transform active:scale-95 cursor-pointer">
-                    <Upload className="w-6 h-6 stroke-[2.5]" />
-                    <span className="text-[10px] font-bold mt-0.5">Enviar</span>
+                {/* BOTÃO FLUTUANTE (FAB) - ENVIAR (ABSOLUTE DENTRO DO CARD) */}
+                <div className="absolute bottom-4 right-2 z-10">
+                  <button className="w-14 h-14 bg-[#F59E0B] hover:bg-amber-600 text-white rounded-full shadow-lg flex flex-col items-center justify-center transition transform active:scale-95 cursor-pointer">
+                    <Upload className="w-5 h-5 stroke-[2.5]" />
+                    <span className="text-[9px] font-bold mt-0.5">Enviar</span>
                   </button>
                 </div>
 

@@ -11,11 +11,11 @@ export default function PacientesRecepcao() {
   const listaPacientes = [
     { 
       id: 1, 
-      nome: 'Kauan Ferreira da Silva', 
+      nome: 'Rhayanna Borges Tonete', 
       cpf: '012.123.456-89', 
       status: 'ativo',
       telefone: '(42) 99999-9999',
-      email: 'engs-kauansilva@camporeal.edu.br',
+      email: 'engs-rhayannatonete@camporeal.edu.br',
       dataNascimento: '14/02/2005',
       endereco: 'Rua Diogo Emanoel de Almeida, 200',
       bairro: 'Centro',

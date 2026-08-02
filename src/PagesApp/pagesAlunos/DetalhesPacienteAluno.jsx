@@ -7,7 +7,7 @@ export default function DetalhesPacienteAluno() {
 
   // Recupera o paciente enviado via estado ou assume o padrão do mockup
   const paciente = location.state?.paciente || {
-    nome: 'Kauan Ferreira',
+    nome: 'Rhaya Borges',
     cpf: '012.123.456-89',
     status: 'Ativo'
   };
@@ -36,7 +36,7 @@ export default function DetalhesPacienteAluno() {
       procedimento: 'Profilaxia e Avaliação',
       disciplina: 'Diagnóstico',
       professor: 'Prof. Dra. Ana Costa',
-      aluno: 'Aluno: Kauan Ferreira'
+      aluno: 'Aluno: Rhaya Borges'
     }
   ];
 

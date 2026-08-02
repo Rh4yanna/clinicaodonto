@@ -14,7 +14,7 @@ export default function AgendarConsulta() {
 
   // Banco de dados mockado para teste da pesquisa
   const listaPacientesMock = [
-    { id: 1, nome: "Kauan Ferreira", cpf: "012.123.456-89", status: "Ativo" },
+    { id: 1, nome: "Rhaya Borges", cpf: "012.123.456-89", status: "Ativo" },
     { id: 2, nome: "Ana Beatriz Santos", cpf: "456.789.123-00", status: "Ativo" },
     { id: 3, nome: "Carlos Eduardo Lima", cpf: "789.456.123-11", status: "Inativo" },
     { id: 4, nome: "Mariana Costa", cpf: "321.654.987-22", status: "Ativo" }

@@ -42,7 +42,7 @@ export default function Configuracoes() {
           </div>
           
           <div>
-            <h3 className="font-extrabold text-gray-950 text-base leading-tight">Kauan Ferreira</h3>
+            <h3 className="font-extrabold text-gray-950 text-base leading-tight">Rhaya Borges</h3>
             <p className="text-gray-500 text-xs font-semibold">Aluno</p>
           </div>
         </div>

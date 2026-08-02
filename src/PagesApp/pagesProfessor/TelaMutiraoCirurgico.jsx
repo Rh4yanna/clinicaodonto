@@ -18,7 +18,7 @@ export default function TelaMutiraoCirurgico() {
   const [pacientes] = useState([
     {
       id: 1,
-      nome: 'Kauan Ferreira',
+      nome: 'Rhaya Borges',
       horario: '08:00',
       procedimento: 'Exodontia Simples',
       status: 'Concluída'

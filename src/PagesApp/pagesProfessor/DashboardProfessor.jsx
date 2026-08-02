@@ -21,14 +21,14 @@ export default function DashboardProfessor() {
   }, []);
 
   const proximosAtendimentos = [
-    { horario: "08:30", paciente: "Kauan Ferreira", procedimento: "Clareamento Dental", especialidade: "Dentística", local: "Centro Cirúrgico" },
+    { horario: "08:30", paciente: "Rhaya Borges", procedimento: "Clareamento Dental", especialidade: "Dentística", local: "Centro Cirúrgico" },
     { horario: "08:50", paciente: "Nome do paciente", procedimento: "Restauração", especialidade: "Dentística", local: "Consultório 03" },
     { horario: "09:00", paciente: "Nome do paciente", procedimento: "Procedimento", especialidade: "Periodontia", local: "Consultório 05" },
     { horario: "10:00", paciente: "Nome do paciente", procedimento: "Procedimento", especialidade: "Cirurgia Bucal", local: "Consultório 03" }
   ];
 
   const cirurgiasHoje = [
-    { horario: "08:30", paciente: "Kauan Ferreira", procedimento: "Exodontia - 36", professor: "Prof: Dr. Carlos Eduardo", local: "Centro Cirúrgico" },
+    { horario: "08:30", paciente: "Rhaya Borges", procedimento: "Exodontia - 36", professor: "Prof: Dr. Carlos Eduardo", local: "Centro Cirúrgico" },
     { horario: "15:30", paciente: "Nome do paciente", procedimento: "Extração de siso", professor: "Prof: Dra. Ana Maria", local: "Centro Cirúrgico" }
   ];
 
@@ -55,28 +55,36 @@ export default function DashboardProfessor() {
       </div>
 
       {/* 2. ÁREA BRANCA COM ROLAGEM (ISOLADA) */}
-      <div className="flex-1 bg-white rounded-t-[28px] overflow-y-auto px-4 py-5 space-y-5">
+      <div className="flex-1 bg-white rounded-t-[28px] overflow-y-auto px-4 py-5 space-y-5 pb-20">
         
         {/* SAUDAÇÃO */}
         <div className="select-none">
-          <h2 className="text-gray-900 text-xl font-extrabold leading-tight">Olá, Prof. Kauan</h2>
+          <h2 className="text-gray-900 text-xl font-extrabold leading-tight">Olá, Prof. Rhaya</h2>
           <p className="text-gray-500 text-xs font-medium">Bem-vindo de volta!</p>
         </div>
 
-        {/* SELECTOR DE DATA */}
-        <div className="w-full border border-gray-200 rounded-xl px-3.5 py-2.5 flex items-center justify-between shadow-xs bg-white select-none">
+        {/* SELECTOR DE DATA - CLICÁVEL PARA A AGENDA */}
+        <div 
+          onClick={() => navigate('/app/professor/agenda')}
+          className="w-full border border-gray-200 rounded-xl px-3.5 py-2.5 flex items-center justify-between shadow-xs bg-white select-none cursor-pointer hover:border-[#3B44A8] transition active:scale-98"
+        >
           <span className="text-[#3B44A8] font-bold text-xs">{dataAtual}</span>
           <Calendar className="text-[#3B44A8]" size={18} />
         </div>
 
         {/* 4 CARDS INDICADORES */}
         <div className="grid grid-cols-4 gap-1.5 select-none">
-          <div className="bg-white border border-gray-200 rounded-xl p-1.5 text-center shadow-xs flex flex-col justify-between h-[82px]">
+          {/* CONSULTAS DO DIA - ROTEIA PARA A AGENDA */}
+          <div 
+            onClick={() => navigate('/app/professor/agenda')}
+            className="bg-white border border-gray-200 rounded-xl p-1.5 text-center shadow-xs hover:border-[#3B44A8] transition active:scale-95 flex flex-col justify-between h-[82px] cursor-pointer"
+          >
             <span className="block text-gray-900 font-extrabold text-[8px] leading-tight">Consultas do dia</span>
             <span className="block text-lg font-black text-[#3B44A8]">16</span>
             <span className="block text-[7px] font-semibold text-gray-400">Confirmadas</span>
           </div>
 
+          {/* CIRURGIAS DO DIA */}
           <div 
             onClick={() => navigate('/app/professor/cirurgias')}
             className="bg-white border border-gray-200 rounded-xl p-1.5 text-center shadow-xs hover:border-[#3B44A8] transition active:scale-95 flex flex-col justify-between h-[82px] cursor-pointer"
@@ -102,7 +110,10 @@ export default function DashboardProfessor() {
         {/* MUTIRÃO CIRÚRGICO */}
         <div className="space-y-1">
           <h3 className="text-[#3B44A8] font-bold text-xs">Mutirão Cirúrgico</h3>
-          <div className="w-full bg-white border border-gray-200 rounded-xl h-10 shadow-xs"></div>
+          <div 
+            onClick={() => navigate('/app/professor/mutirao')}
+            className="w-full bg-white border border-gray-200 rounded-xl h-10 shadow-xs cursor-pointer hover:border-[#3B44A8] transition"
+          ></div>
         </div>
 
         {/* ATENDIMENTOS DA SEMANA (GRÁFICO) */}

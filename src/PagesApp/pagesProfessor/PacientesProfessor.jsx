@@ -22,7 +22,7 @@ export default function PacientesProfessor() {
 
   // Fila de pacientes (dados simulados)
   const [pacientes] = useState([
-    { id: 1, nome: 'Kauan Ferreira', cpf: '012.123.456-89', status: 'ativo' },
+    { id: 1, nome: 'Rhaya Borges', cpf: '012.123.456-89', status: 'ativo' },
     { id: 2, nome: 'Nome do paciente', cpf: 'CPF', status: 'ativo' },
     { id: 3, nome: 'Nome do paciente', cpf: 'CPF', status: 'ativo' },
     { id: 4, nome: 'Nome do paciente', cpf: 'CPF', status: 'ativo' },

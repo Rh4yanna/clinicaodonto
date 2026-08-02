@@ -115,9 +115,9 @@ export default function StatusConsultas() {
 
           {abaAtiva === 'pendentes' && (
             [
-              { data: "20/06/2026", hora: "08:30", nome: "Kauan Ferreira", proc: "Clareamento Dental", esp: "Dentística" },
-              { data: "20/06/2026", hora: "08:30", nome: "Kauan Ferreira", proc: "Clareamento Dental", esp: "Dentística" },
-              { data: "20/06/2026", hora: "08:30", nome: "Kauan Ferreira", proc: "Clareamento Dental", esp: "Dentística" }
+              { data: "20/06/2026", hora: "08:30", nome: "Rhaya Borges", proc: "Clareamento Dental", esp: "Dentística" },
+              { data: "20/06/2026", hora: "08:30", nome: "Rhaya Borges", proc: "Clareamento Dental", esp: "Dentística" },
+              { data: "20/06/2026", hora: "08:30", nome: "Rhaya Borges", proc: "Clareamento Dental", esp: "Dentística" }
             ].map((p, idx) => <ItemLista key={idx} paciente={p} />)
           )}
 

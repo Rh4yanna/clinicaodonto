@@ -11,7 +11,7 @@ export default function AgendaGeral() {
   const [menuAbertoId, setMenuAbertoId] = useState(null);
 
   const [agendamentos, setAgendamentos] = useState([
-    { id: 1, nome: "Kauan Ferreira", hora: "09:30", procedimento: "Avaliação", confirmado: true, dia: 19, mes: 6 }, 
+    { id: 1, nome: "Rhaya Borges", hora: "09:30", procedimento: "Avaliação", confirmado: true, dia: 19, mes: 6 }, 
     { id: 2, nome: "Nome do paciente", hora: "09:45", procedimento: "Retorno", confirmado: false, dia: 19, mes: 6 },
     { id: 3, nome: "Nome do paciente", hora: "10:40", procedimento: "Avaliação", confirmado: true, dia: 20, mes: 6 }, 
     { id: 4, nome: "Nome do paciente", hora: "11:00", procedimento: "Avaliação", confirmado: true, dia: 25, mes: 6 },

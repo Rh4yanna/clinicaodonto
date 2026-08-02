@@ -9,16 +9,13 @@ import {
   MoreVertical
 } from 'lucide-react';
 
-export default function AgendaAluno() {
+export default function AgendaProfessor() {
   const navigate = useNavigate();
 
   // Estados dos Modais / Dropdowns
   const [modalDisciplinasAberto, setModalDisciplinasAberto] = useState(false);
   const [disciplinaSelecionada, setDisciplinaSelecionada] = useState('Todas as disciplinas');
   const [menuAbertoId, setMenuAbertoId] = useState(null);
-
-  // ESTADOS DE DATA E CALENDÁRIO
-  const [dataSelecionada, setDataSelecionada] = useState(new Date());
 
   // Lista de Disciplinas disponíveis
   const listaDisciplinas = [
@@ -38,14 +35,14 @@ export default function AgendaAluno() {
     {
       disciplina: 'Dentística',
       pacientes: [
-        { id: 1, hora: '09:30', nome: 'Maria Silva', procedimento: 'Clareamento Dental' },
-        { id: 2, hora: '11:40', nome: 'João Santos', procedimento: 'Restauração' }
+        { id: 1, hora: '09:30', nome: 'Nome do paciente', procedimento: 'Clareamento Dental' },
+        { id: 2, hora: '11:40', nome: 'Nome do paciente', procedimento: 'Restauração' }
       ]
     },
     {
       disciplina: 'Endodontia',
       pacientes: [
-        { id: 3, hora: '13:00', nome: 'Ana Beatriz', procedimento: 'Tratamento de Canal' }
+        { id: 3, hora: '13:00', nome: 'Nome do paciente', procedimento: 'Tratamento de Canal' }
       ]
     },
     {
@@ -53,53 +50,6 @@ export default function AgendaAluno() {
       pacientes: []
     }
   ];
-
-  // --- LÓGICA DE NAVEGAÇÃO DA SEMANA ---
-
-  // Retorna o primeiro dia (Domingo) da semana contendo a data informada
-  const getInicioSemana = (date) => {
-    const d = new Date(date);
-    const day = d.getDay();
-    const diff = d.getDate() - day;
-    return new Date(d.setDate(diff));
-  };
-
-  const inicioSemanaAtual = getInicioSemana(dataSelecionada);
-
-  // Gera os 7 dias da semana visível
-  const diasDaSemana = Array.from({ length: 7 }, (_, i) => {
-    const d = new Date(inicioSemanaAtual);
-    d.setDate(d.getDate() + i);
-    return d;
-  });
-
-  // Funções para trocar de semana
-  const semanaAnterior = () => {
-    const novaData = new Date(dataSelecionada);
-    novaData.setDate(novaData.getDate() - 7);
-    setDataSelecionada(novaData);
-  };
-
-  const proximaSemana = () => {
-    const novaData = new Date(dataSelecionada);
-    novaData.setDate(novaData.getDate() + 7);
-    setDataSelecionada(novaData);
-  };
-
-  // Formatação do Mês e Ano para o Cabeçalho
-  const mesAnoFormatado = inicioSemanaAtual.toLocaleDateString('pt-BR', {
-    month: 'long',
-    year: 'numeric'
-  });
-
-  // Comparador de datas (Ignora hora/minuto)
-  const isMesmoDia = (d1, d2) => {
-    return (
-      d1.getDate() === d2.getDate() &&
-      d1.getMonth() === d2.getMonth() &&
-      d1.getFullYear() === d2.getFullYear()
-    );
-  };
 
   // Filtragem por disciplina
   const agendamentosFiltrados = agendamentos.filter((grupo) => {
@@ -125,7 +75,7 @@ export default function AgendaAluno() {
         </button>
 
         <h1 className="text-lg font-semibold tracking-wide text-center flex-1">
-          Agenda de Atendimentos
+          Agenda
         </h1>
 
         <div className="w-9" /> {/* Espaçador */}
@@ -152,28 +102,18 @@ export default function AgendaAluno() {
           </button>
         </div>
 
-        {/* CALENDÁRIO SEMANAL DINÂMICO */}
+        {/* CALENDÁRIO SEMANAL */}
         <div className="pt-1 pb-2">
-          <div className="flex items-center justify-between text-[#3B42B2] font-bold text-sm mb-3 px-2 capitalize">
-            <button 
-              onClick={semanaAnterior}
-              className="p-1 hover:bg-slate-100 rounded-full transition cursor-pointer active:scale-95 text-[#3B42B2]"
-            >
+          <div className="flex items-center justify-between text-[#3B42B2] font-bold text-sm mb-3 px-2">
+            <button className="p-1 hover:bg-slate-100 rounded-full transition">
               <ChevronLeft className="w-5 h-5" />
             </button>
-            
-            {/* Exibe o Mês e Ano dinâmico */}
-            <span>{mesAnoFormatado}</span>
-
-            <button 
-              onClick={proximaSemana}
-              className="p-1 hover:bg-slate-100 rounded-full transition cursor-pointer active:scale-95 text-[#3B42B2]"
-            >
+            <span>Maio 2026</span>
+            <button className="p-1 hover:bg-slate-100 rounded-full transition">
               <ChevronRight className="w-5 h-5" />
             </button>
           </div>
 
-          {/* Dias da semana (Cabeçalho fixo Dom - Sáb) */}
           <div className="grid grid-cols-7 text-center gap-1">
             {['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'].map((dia, idx) => (
               <span key={idx} className="text-[10px] font-bold text-slate-400">
@@ -181,24 +121,27 @@ export default function AgendaAluno() {
               </span>
             ))}
 
-            {/* Dias do mês renderizados dinamicamente */}
-            {diasDaSemana.map((dataItem, idx) => {
-              const ativo = isMesmoDia(dataItem, dataSelecionada);
-              return (
-                <div key={idx} className="flex justify-center pt-1">
-                  <button
-                    onClick={() => setDataSelecionada(dataItem)}
-                    className={`w-7 h-7 rounded-full text-xs font-bold flex items-center justify-center transition cursor-pointer ${
-                      ativo
-                        ? 'bg-[#3B42B2] text-white shadow-md'
-                        : 'text-slate-700 hover:bg-slate-100'
-                    }`}
-                  >
-                    {dataItem.getDate()}
-                  </button>
-                </div>
-              );
-            })}
+            {[
+              { dia: 24, ativo: false },
+              { dia: 25, ativo: true },
+              { dia: 26, ativo: false },
+              { dia: 27, ativo: false },
+              { dia: 28, ativo: false },
+              { dia: 29, ativo: false },
+              { dia: 30, ativo: false }
+            ].map((item, idx) => (
+              <div key={idx} className="flex justify-center pt-1">
+                <button
+                  className={`w-7 h-7 rounded-full text-xs font-bold flex items-center justify-center transition ${
+                    item.ativo
+                      ? 'bg-[#3B42B2] text-white shadow-md'
+                      : 'text-slate-700 hover:bg-slate-100'
+                  }`}
+                >
+                  {item.dia}
+                </button>
+              </div>
+            ))}
           </div>
         </div>
 
@@ -260,13 +203,13 @@ export default function AgendaAluno() {
                         {/* MENU POPUP */}
                         {menuAbertoId === paciente.id && (
                           <div 
-                            className="absolute right-0 top-7 w-36 bg-white rounded-xl shadow-xl border border-slate-100 py-1.5 z-30"
+                            className="absolute right-0 top-7 w-32 bg-white rounded-xl shadow-xl border border-slate-100 py-1.5 z-30"
                             onClick={(e) => e.stopPropagation()}
                           >
                             <button
                               onClick={() => {
                                 setMenuAbertoId(null);
-                                navigate('/app/aluno/agenda/detalhes', { state: { paciente } });
+                                navigate('/app/professor/atendimento');
                               }}
                               className="w-full text-left px-3 py-1.5 text-[10px] font-bold text-slate-700 hover:bg-slate-50 transition"
                             >
@@ -275,7 +218,7 @@ export default function AgendaAluno() {
                             <button
                               onClick={() => {
                                 setMenuAbertoId(null);
-                                navigate('/app/aluno/pacientes/detalhes', { state: { paciente } });
+                                navigate('/app/professor/pacientes/detalhes');
                               }}
                               className="w-full text-left px-3 py-1.5 text-[10px] font-bold text-slate-700 hover:bg-slate-50 transition"
                             >
@@ -334,6 +277,7 @@ export default function AgendaAluno() {
                         </span>
                       </div>
 
+                      {/* Radio button personalizado */}
                       <div className={`w-4 h-4 rounded-full border-2 flex items-center justify-center ${
                         selecionado ? 'border-[#3B42B2] bg-[#3B42B2]' : 'border-slate-300'
                       }`}>

@@ -28,7 +28,7 @@ export default function SettingsManager({ onClose, onLogout }) {
 
   // Dados Mockados - Usuários
   const usuariosData = [
-    { id: 1, nome: 'Kauan Ferreira', email: 'engs-kauansilva@camporeal.edu.br', perfil: 'Administrador' },
+    { id: 1, nome: 'Rhaya Borges', email: 'engs-rhayannatonete@camporeal.edu.br', perfil: 'Administrador' },
     { id: 2, nome: 'Nome do usuário', email: 'Email', perfil: 'Recepção' },
     { id: 3, nome: 'Nome do usuário', email: 'Email', perfil: 'Aluno' },
     { id: 4, nome: 'Nome do usuário', email: 'Email', perfil: 'Aluno' },
@@ -191,7 +191,7 @@ export default function SettingsManager({ onClose, onLogout }) {
                   <User size={30} />
                 </div>
                 <div>
-                  <h3 className="text-base font-black text-gray-900">Kauan Ferreira</h3>
+                  <h3 className="text-base font-black text-gray-900">Rhaya Borges</h3>
                   <p className="text-xs font-semibold text-gray-500">Administrador / Professor</p>
                 </div>
               </div>
