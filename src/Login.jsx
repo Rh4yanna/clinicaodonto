@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { Eye, EyeOff, ChevronDown, User, GraduationCap, Laptop } from 'lucide-react';
-import api from './services/api'; // Import da API conectada ao Railway
+import api from './Services/api'; // Import da API conectada ao Railway
 
 // Importa a sua logo oficial diretamente da pasta de assets conforme sua estrutura física
 import logoOdonto from './assets/images/odontologia-branca-scaled.png';
