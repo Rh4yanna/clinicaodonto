@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ArrowLeft, Info, CheckCircle2 } from 'lucide-react';
-import api from './services/api'; // Import da API integrada ao Railway
+import api from './Services/api'; // Import da API integrada ao Railway
 
 export default function RecuperarSenha() {
   const navigate = useNavigate();
