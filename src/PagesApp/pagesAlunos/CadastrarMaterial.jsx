@@ -1,6 +1,16 @@
-import { useState, useRef } from 'react';
+import React, { useState, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ArrowLeft, ChevronDown, Calendar, Image, Barcode, X } from 'lucide-react';
+import { 
+  ArrowLeft, 
+  ChevronDown, 
+  Calendar, 
+  Image, 
+  Barcode, 
+  X, 
+  Loader2, 
+  AlertCircle 
+} from 'lucide-react';
+import api from '../../Services/api';
 
 export default function CadastrarMaterial() {
   const navigate = useNavigate();
@@ -16,10 +26,14 @@ export default function CadastrarMaterial() {
   const [descricao, setDescricao] = useState('');
   const [fabricante, setFabricante] = useState('');
   const [validade, setValidade] = useState('');
-  
-  // Estados para Imagem / Arquivo
+
+  // Estados de Imagem / Arquivo
   const [arquivo, setArquivo] = useState(null);
   const [previewUrl, setPreviewUrl] = useState('');
+
+  // Estados de Controle / API
+  const [salvando, setSalvando] = useState(false);
+  const [erro, setErro] = useState('');
 
   // Gatilho para clicar no input escondido
   const handleAreaImagemClick = () => {
@@ -30,30 +44,68 @@ export default function CadastrarMaterial() {
   const handleFileChange = (e) => {
     const file = e.target.files[0];
     if (file) {
+      if (file.size > 10 * 1024 * 1024) {
+        setErro('O arquivo deve ter no máximo 10MB.');
+        return;
+      }
+      setErro('');
       setArquivo(file);
-      
+
       // Se for uma imagem, gera a URL de visualização prévia
       if (file.type.startsWith('image/')) {
         setPreviewUrl(URL.createObjectURL(file));
       } else {
-        setPreviewUrl(''); // Caso seja PDF ou outro formato suportado
+        setPreviewUrl('');
       }
     }
   };
 
   // Remove o arquivo selecionado
   const handleRemoverArquivo = (e) => {
-    e.stopPropagation(); // Evita reabrir a janela de arquivos ao clicar no X
+    e.stopPropagation();
     setArquivo(null);
     setPreviewUrl('');
     if (fileInputRef.current) fileInputRef.current.value = '';
   };
 
-  const handleSalvar = (e) => {
+  // Envio do formulário para o backend
+  const handleSalvar = async (e) => {
     e.preventDefault();
-    // Lógica para salvar futuramente...
-    console.log("Produto Salvo!", { nome, arquivo });
-    navigate('/app/aluno/estoque'); 
+    setErro('');
+    setSalvando(true);
+
+    try {
+      // Monta o objeto FormData para permitir envio multipart (caso haja imagem)
+      const formData = new FormData();
+      formData.append('nome', nome);
+      formData.append('codigoBarras', codigoBarras);
+      formData.append('categoria', categoria);
+      formData.append('unidade', unidade);
+      formData.append('estoqueMinimo', estoqueMinimo);
+      formData.append('estoqueIdeal', estoqueIdeal);
+      formData.append('descricao', descricao);
+      formData.append('fabricante', fabricante);
+      formData.append('validade', validade);
+
+      if (arquivo) {
+        formData.append('imagem', arquivo);
+      }
+
+      // Envia os dados para a API
+      await api.post('/materiais', formData, {
+        headers: {
+          'Content-Type': 'multipart/form-data'
+        }
+      });
+
+      // Redireciona após salvar com sucesso
+      navigate('/app/aluno/estoque');
+    } catch (err) {
+      console.error('Erro ao cadastrar material:', err);
+      setErro(err.response?.data?.message || 'Falha ao cadastrar o material. Tente novamente.');
+    } finally {
+      setSalvando(false);
+    }
   };
 
   return (
@@ -64,7 +116,7 @@ export default function CadastrarMaterial() {
         <button 
           type="button"
           onClick={() => navigate('/app/aluno/estoque')}
-          className="p-1 hover:bg-white/10 rounded-lg transition active:scale-95"
+          className="p-1 hover:bg-white/10 rounded-lg transition active:scale-95 cursor-pointer"
         >
           <ArrowLeft size={24} />
         </button>
@@ -75,6 +127,14 @@ export default function CadastrarMaterial() {
       {/* CONTEÚDO ROLÁVEL - FORMULÁRIO */}
       <form onSubmit={handleSalvar} className="flex-1 overflow-y-auto px-6 py-5 space-y-6 pb-24">
         
+        {/* EXIBIÇÃO DE ERRO SE HOUVER */}
+        {erro && (
+          <div className="p-3.5 bg-red-50 border border-red-200 text-red-600 rounded-xl flex items-center gap-2.5 text-xs font-semibold">
+            <AlertCircle size={18} className="shrink-0" />
+            <span>{erro}</span>
+          </div>
+        )}
+
         {/* SEÇÃO: Informações básicas */}
         <div className="space-y-4">
           <h2 className="text-[#3B44A8] font-bold text-sm tracking-wide">Informações básicas</h2>
@@ -121,13 +181,16 @@ export default function CadastrarMaterial() {
               <select
                 value={categoria}
                 onChange={(e) => setCategoria(e.target.value)}
-                className="w-full px-4 py-3 bg-white border border-gray-300 rounded-xl text-xs text-gray-500 focus:outline-none focus:border-[#3B44A8] shadow-sm transition appearance-none font-medium"
+                className="w-full px-4 py-3 bg-white border border-gray-300 rounded-xl text-xs text-gray-700 focus:outline-none focus:border-[#3B44A8] shadow-sm transition appearance-none font-medium"
                 required
               >
                 <option value="">Selecione</option>
                 <option value="cirurgia">Cirurgia</option>
                 <option value="dentistica">Dentística</option>
                 <option value="periodontia">Periodontia</option>
+                <option value="endodontia">Endodontia</option>
+                <option value="ortodontia">Ortodontia</option>
+                <option value="protese">Prótese</option>
               </select>
               <ChevronDown className="absolute right-4 top-3.5 text-gray-400 pointer-events-none" size={16} />
             </div>
@@ -147,7 +210,7 @@ export default function CadastrarMaterial() {
               <select
                 value={unidade}
                 onChange={(e) => setUnidade(e.target.value)}
-                className="w-full px-4 py-3 bg-white border border-gray-300 rounded-xl text-xs text-gray-500 focus:outline-none focus:border-[#3B44A8] shadow-sm transition appearance-none font-medium"
+                className="w-full px-4 py-3 bg-white border border-gray-300 rounded-xl text-xs text-gray-700 focus:outline-none focus:border-[#3B44A8] shadow-sm transition appearance-none font-medium"
                 required
               >
                 <option value="">Selecione</option>
@@ -224,8 +287,7 @@ export default function CadastrarMaterial() {
             <label className="text-gray-700 text-xs font-bold block">Data de validade</label>
             <div className="relative">
               <input
-                type="text"
-                placeholder="dd/mm/aaaa"
+                type="date"
                 value={validade}
                 onChange={(e) => setValidade(e.target.value)}
                 className="w-full pl-4 pr-10 py-3 bg-white border border-gray-300 rounded-xl text-xs text-gray-700 placeholder-gray-400 focus:outline-none focus:border-[#3B44A8] shadow-sm transition"
@@ -268,7 +330,7 @@ export default function CadastrarMaterial() {
               <button
                 type="button"
                 onClick={handleRemoverArquivo}
-                className="flex items-center gap-1 text-[10px] text-red-500 font-bold bg-red-50 hover:bg-red-100 px-2 py-1 rounded-lg transition mt-1"
+                className="flex items-center gap-1 text-[10px] text-red-500 font-bold bg-red-50 hover:bg-red-100 px-2 py-1 rounded-lg transition mt-1 cursor-pointer"
               >
                 <X size={12} /> Remover arquivo
               </button>
@@ -284,12 +346,20 @@ export default function CadastrarMaterial() {
           )}
         </div>
 
-        {/* BOTÃO SALVAR PRODUTO (Laranja) */}
+        {/* BOTÃO SALVAR PRODUTO */}
         <button
           type="submit"
-          className="w-full py-4 bg-[#F9A814] hover:bg-[#e0940f] active:scale-[0.98] rounded-xl font-bold text-white text-xs transition-all shadow-md mt-4"
+          disabled={salvando}
+          className="w-full py-4 bg-[#F9A814] hover:bg-[#e0940f] active:scale-[0.98] rounded-xl font-bold text-white text-xs transition-all shadow-md mt-4 flex items-center justify-center gap-2 disabled:opacity-60 cursor-pointer"
         >
-          Salvar produto
+          {salvando ? (
+            <>
+              <Loader2 size={16} className="animate-spin" />
+              <span>Salvando material...</span>
+            </>
+          ) : (
+            <span>Salvar produto</span>
+          )}
         </button>
 
       </form>

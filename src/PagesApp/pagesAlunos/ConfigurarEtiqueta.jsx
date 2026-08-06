@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { ArrowLeft, Calendar, Minus, Plus, ChevronDown } from 'lucide-react';
+import { ArrowLeft, Calendar, Minus, Plus, ChevronDown, Eye, Package } from 'lucide-react';
 
 export default function ConfigurarEtiqueta() {
   const navigate = useNavigate();
@@ -19,11 +19,26 @@ export default function ConfigurarEtiqueta() {
   // Estados com os dados iniciais do material herdado
   const [lote, setLote] = useState(material.lote || '');
   const [validade, setValidade] = useState(material.val || '');
-  const [quantidade, setQuantidade] = useState(10); // Valor padrão do print
+  const [quantidade, setQuantidade] = useState(10);
   const [localizacao, setLocalizacao] = useState('Centro Universitário Campo Real Guarapuava');
   const [incluirQR, setIncluirQR] = useState(true);
   const [incluirBarra, setIncluirBarra] = useState(true);
   const [modelo, setModelo] = useState('Padrão - 50mm x 30mm');
+
+  const handleGerarVisualizacao = () => {
+    navigate('/app/aluno/estoque/pre-visualizacao', {
+      state: {
+        material,
+        lote,
+        validade,
+        quantidade,
+        localizacao,
+        incluirQR,
+        incluirBarra,
+        modelo
+      }
+    });
+  };
 
   return (
     <div className="flex-1 flex flex-col min-h-0 bg-[#F8F9FD] font-sans pb-10">
@@ -34,6 +49,7 @@ export default function ConfigurarEtiqueta() {
           type="button"
           onClick={() => navigate('/app/aluno/estoque/materiais')}
           className="p-1 hover:bg-white/10 rounded-lg transition active:scale-95 mr-4"
+          aria-label="Voltar para lista de materiais"
         >
           <ArrowLeft size={24} />
         </button>
@@ -46,11 +62,18 @@ export default function ConfigurarEtiqueta() {
         <div className="space-y-2">
           <h2 className="text-[#3B44A8] font-bold text-sm tracking-wide px-1">Material selecionado</h2>
           <div className="bg-white border border-gray-150 rounded-2xl p-4 shadow-sm flex gap-4 items-center">
-            <img 
-              src={material.imagem} 
-              alt={material.nome} 
-              className="w-16 h-16 rounded-xl object-cover bg-gray-50 border border-gray-150 shrink-0" 
-            />
+            {material.imagem ? (
+              <img 
+                src={material.imagem} 
+                alt={material.nome} 
+                className="w-16 h-16 rounded-xl object-cover bg-gray-50 border border-gray-150 shrink-0" 
+              />
+            ) : (
+              <div className="w-16 h-16 rounded-xl bg-gray-100 border border-gray-200 flex items-center justify-center text-gray-400 shrink-0">
+                <Package size={28} />
+              </div>
+            )}
+            
             <div className="flex-1 min-w-0 text-[11px] text-gray-500 font-semibold space-y-0.5">
               <h3 className="font-bold text-gray-900 text-sm leading-tight truncate mb-0.5">{material.nome}</h3>
               <p><span className="text-gray-950 font-bold">Código:</span> {material.codigo}</p>
@@ -67,11 +90,13 @@ export default function ConfigurarEtiqueta() {
             
             {/* Campo Lote */}
             <div>
-              <label className="block text-xs font-bold text-gray-900 mb-1">Lote</label>
+              <label htmlFor="lote-input" className="block text-xs font-bold text-gray-900 mb-1">Lote</label>
               <input 
+                id="lote-input"
                 type="text" 
                 value={lote}
                 onChange={(e) => setLote(e.target.value)}
+                placeholder="Ex: L-2024001"
                 className="w-full bg-white border border-gray-300 rounded-xl px-4 py-3 text-xs font-medium focus:outline-none focus:border-[#3B44A8] shadow-sm"
               />
             </div>
@@ -79,12 +104,14 @@ export default function ConfigurarEtiqueta() {
             {/* Linha dupla: Validade e Quantidade */}
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <label className="block text-xs font-bold text-gray-900 mb-1">Validade</label>
+                <label htmlFor="validade-input" className="block text-xs font-bold text-gray-900 mb-1">Validade</label>
                 <div className="relative">
                   <input 
+                    id="validade-input"
                     type="text" 
                     value={validade}
                     onChange={(e) => setValidade(e.target.value)}
+                    placeholder="DD/MM/AAAA"
                     className="w-full bg-white border border-gray-300 rounded-xl pl-4 pr-10 py-3 text-xs font-medium focus:outline-none focus:border-[#3B44A8] shadow-sm"
                   />
                   <Calendar size={16} className="absolute right-3 top-3.5 text-gray-400 pointer-events-none" />
@@ -97,7 +124,8 @@ export default function ConfigurarEtiqueta() {
                   <button 
                     type="button" 
                     onClick={() => setQuantidade(q => Math.max(1, q - 1))} 
-                    className="px-3 h-full hover:bg-gray-50 active:bg-gray-100 border-r border-gray-100 transition flex items-center justify-center text-gray-500"
+                    className="px-3 h-full hover:bg-gray-50 active:bg-gray-100 border-r border-gray-100 transition flex items-center justify-center text-gray-500 cursor-pointer"
+                    aria-label="Diminuir quantidade"
                   >
                     <Minus size={14} strokeWidth={2.5} />
                   </button>
@@ -105,7 +133,8 @@ export default function ConfigurarEtiqueta() {
                   <button 
                     type="button" 
                     onClick={() => setQuantidade(q => q + 1)} 
-                    className="px-3 h-full hover:bg-gray-50 active:bg-gray-100 border-l border-gray-100 transition flex items-center justify-center text-gray-500"
+                    className="px-3 h-full hover:bg-gray-50 active:bg-gray-100 border-l border-gray-100 transition flex items-center justify-center text-gray-500 cursor-pointer"
+                    aria-label="Aumentar quantidade"
                   >
                     <Plus size={14} strokeWidth={2.5} />
                   </button>
@@ -115,12 +144,13 @@ export default function ConfigurarEtiqueta() {
 
             {/* Campo Localização */}
             <div>
-              <label className="block text-xs font-bold text-gray-900 mb-1">Localização (opcional)</label>
+              <label htmlFor="localizacao-select" className="block text-xs font-bold text-gray-900 mb-1">Localização (opcional)</label>
               <div className="relative">
                 <select 
+                  id="localizacao-select"
                   value={localizacao}
                   onChange={(e) => setLocalizacao(e.target.value)}
-                  className="w-full appearance-none bg-white border border-gray-300 rounded-xl px-4 py-3 text-xs font-medium focus:outline-none focus:border-[#3B44A8] shadow-sm pr-10"
+                  className="w-full appearance-none bg-white border border-gray-300 rounded-xl px-4 py-3 text-xs font-medium focus:outline-none focus:border-[#3B44A8] shadow-sm pr-10 cursor-pointer"
                 >
                   <option value="Centro Universitário Campo Real Guarapuava">Centro Universitário Campo Real Guarapuava</option>
                   <option value="Clínica Odontológica - Bloco A">Clínica Odontológica - Bloco A</option>
@@ -132,34 +162,36 @@ export default function ConfigurarEtiqueta() {
 
             {/* Toggles Interativos */}
             <div className="space-y-3 pt-2">
-              <div className="flex items-center justify-between">
+              <label className="flex items-center justify-between cursor-pointer select-none">
                 <span className="text-xs font-bold text-gray-700">Incluir QR-Code</span>
                 <input 
                   type="checkbox" 
                   checked={incluirQR} 
                   onChange={() => setIncluirQR(!incluirQR)} 
-                  className="w-9 h-5 cursor-pointer accent-[#3B44A8]" 
+                  className="w-5 h-5 rounded border-gray-300 text-[#3B44A8] focus:ring-[#3B44A8] cursor-pointer accent-[#3B44A8]" 
                 />
-              </div>
-              <div className="flex items-center justify-between">
+              </label>
+
+              <label className="flex items-center justify-between cursor-pointer select-none">
                 <span className="text-xs font-bold text-gray-700">Incluir Código de Barras</span>
                 <input 
                   type="checkbox" 
                   checked={incluirBarra} 
                   onChange={() => setIncluirBarra(!incluirBarra)} 
-                  className="w-9 h-5 cursor-pointer accent-[#3B44A8]" 
+                  className="w-5 h-5 rounded border-gray-300 text-[#3B44A8] focus:ring-[#3B44A8] cursor-pointer accent-[#3B44A8]" 
                 />
-              </div>
+              </label>
             </div>
 
             {/* Modelo de Etiqueta */}
             <div>
-              <label className="block text-xs font-bold text-gray-900 mb-1">Modelo de etiqueta</label>
+              <label htmlFor="modelo-select" className="block text-xs font-bold text-gray-900 mb-1">Modelo de etiqueta</label>
               <div className="relative">
                 <select 
+                  id="modelo-select"
                   value={modelo}
                   onChange={(e) => setModelo(e.target.value)}
-                  className="w-full appearance-none bg-white border border-gray-300 rounded-xl px-4 py-3 text-xs font-medium focus:outline-none focus:border-[#3B44A8] shadow-sm pr-10"
+                  className="w-full appearance-none bg-white border border-gray-300 rounded-xl px-4 py-3 text-xs font-medium focus:outline-none focus:border-[#3B44A8] shadow-sm pr-10 cursor-pointer"
                 >
                   <option value="Padrão - 50mm x 30mm">Padrão - 50mm x 30mm</option>
                   <option value="Compacto - 40mm x 25mm">Compacto - 40mm x 25mm</option>
@@ -174,16 +206,11 @@ export default function ConfigurarEtiqueta() {
         {/* BOTÃO NAVEGAR PARA PRÉ-VISUALIZAÇÃO */}
         <button 
           type="button"
-          onClick={() => navigate('/app/aluno/estoque/pre-visualizacao', { 
-            state: { material, lote, validade, quantidade, localizacao, incluirQR, incluirBarra, modelo } 
-          })}
-          className="w-full bg-[#F59E0B] text-white font-bold py-4 rounded-2xl text-sm shadow-md flex items-center justify-center gap-2 hover:bg-[#D97706] transition active:scale-[0.98]"
+          onClick={handleGerarVisualizacao}
+          className="w-full bg-[#F59E0B] text-white font-bold py-4 rounded-2xl text-sm shadow-md flex items-center justify-center gap-2 hover:bg-[#D97706] transition active:scale-[0.98] cursor-pointer"
         >
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-            <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
-            <circle cx="12" cy="12" r="3"/>
-          </svg>
-          Gerar pré-visualização
+          <Eye size={20} />
+          <span>Gerar pré-visualização</span>
         </button>
 
       </div>

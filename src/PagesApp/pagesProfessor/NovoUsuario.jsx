@@ -5,7 +5,6 @@ import { ArrowLeft, Eye, EyeOff, Info, ChevronDown } from 'lucide-react';
 export default function NovoUsuario() {
   const navigate = useNavigate();
 
-  // Estados dos formulários
   const [mostrarSenha, setMostrarSenha] = useState(false);
   const [formData, setFormData] = useState({
     nome: '',
@@ -26,9 +25,32 @@ export default function NovoUsuario() {
     }
   });
 
+  // Funções para aplicar máscaras nos campos de texto
+  const maskCPF = (value) => {
+    return value
+      .replace(/\D/g, '')
+      .replace(/(\d{3})(\d)/, '$1.$2')
+      .replace(/(\d{3})(\d)/, '$1.$2')
+      .replace(/(\d{3})(\d{1,2})/, '$1-$2')
+      .replace(/(-\d{2})\d+?$/, '$1');
+  };
+
+  const maskPhone = (value) => {
+    return value
+      .replace(/\D/g, '')
+      .replace(/(\d{2})(\d)/, '($1) $2')
+      .replace(/(\d{5})(\d)/, '$1-$2')
+      .replace(/(-\d{4})\d+?$/, '$1');
+  };
+
   const handleChange = (e) => {
     const { name, value } = e.target;
-    setFormData(prev => ({ ...prev, [name]: value }));
+    let formattedValue = value;
+
+    if (name === 'cpf') formattedValue = maskCPF(value);
+    if (name === 'telefone') formattedValue = maskPhone(value);
+
+    setFormData(prev => ({ ...prev, [name]: formattedValue }));
   };
 
   const handleCheckboxChange = (key) => {
@@ -43,8 +65,15 @@ export default function NovoUsuario() {
 
   const handleSubmit = (e) => {
     e.preventDefault();
-    // Lógica para salvar usuário aqui...
-    console.log('Dados do usuário:', formData);
+    
+    // Payload limpo para envio à API (remove formatação de CPF e telefone)
+    const payload = {
+      ...formData,
+      cpf: formData.cpf.replace(/\D/g, ''),
+      telefone: formData.telefone.replace(/\D/g, '')
+    };
+
+    console.log('Dados do usuário prontos para a API:', payload);
     navigate(-1);
   };
 
@@ -54,6 +83,7 @@ export default function NovoUsuario() {
       {/* TOPO FIXO */}
       <div className="pt-8 pb-4 px-6 text-white flex items-center justify-between shrink-0">
         <button 
+          type="button"
           onClick={() => navigate(-1)}
           className="p-1.5 hover:bg-white/10 rounded-lg transition active:scale-95 cursor-pointer"
           aria-label="Voltar"
@@ -117,6 +147,7 @@ export default function NovoUsuario() {
                   value={formData.cpf}
                   onChange={handleChange}
                   placeholder="000.000.000-00"
+                  maxLength={14}
                   className="w-full px-3 py-2.5 border border-slate-200 rounded-xl text-xs text-slate-800 focus:outline-none focus:border-[#3B42B2] placeholder:text-slate-400 shadow-sm"
                   required
                 />
@@ -131,6 +162,7 @@ export default function NovoUsuario() {
                   value={formData.telefone}
                   onChange={handleChange}
                   placeholder="(00) 00000-0000"
+                  maxLength={15}
                   className="w-full px-3 py-2.5 border border-slate-200 rounded-xl text-xs text-slate-800 focus:outline-none focus:border-[#3B42B2] placeholder:text-slate-400 shadow-sm"
                   required
                 />
@@ -148,13 +180,15 @@ export default function NovoUsuario() {
                     name="sexo"
                     value={formData.sexo}
                     onChange={handleChange}
-                    className="w-full px-3 py-2.5 border border-slate-200 rounded-xl text-xs text-slate-500 focus:outline-none focus:border-[#3B42B2] appearance-none bg-white shadow-sm cursor-pointer"
+                    className={`w-full px-3 py-2.5 border border-slate-200 rounded-xl text-xs focus:outline-none focus:border-[#3B42B2] appearance-none bg-white shadow-sm cursor-pointer ${
+                      formData.sexo === '' ? 'text-slate-400' : 'text-slate-800'
+                    }`}
                     required
                   >
-                    <option value="">Selecione</option>
-                    <option value="M">Masculino</option>
-                    <option value="F">Feminino</option>
-                    <option value="O">Outro</option>
+                    <option value="" disabled hidden>Selecione</option>
+                    <option value="M" className="text-slate-800">Masculino</option>
+                    <option value="F" className="text-slate-800">Feminino</option>
+                    <option value="O" className="text-slate-800">Outro</option>
                   </select>
                   <ChevronDown size={16} className="absolute right-3 top-3 text-slate-400 pointer-events-none" />
                 </div>
@@ -169,12 +203,14 @@ export default function NovoUsuario() {
                     name="status"
                     value={formData.status}
                     onChange={handleChange}
-                    className="w-full px-3 py-2.5 border border-slate-200 rounded-xl text-xs text-slate-500 focus:outline-none focus:border-[#3B42B2] appearance-none bg-white shadow-sm cursor-pointer"
+                    className={`w-full px-3 py-2.5 border border-slate-200 rounded-xl text-xs focus:outline-none focus:border-[#3B42B2] appearance-none bg-white shadow-sm cursor-pointer ${
+                      formData.status === '' ? 'text-slate-400' : 'text-slate-800'
+                    }`}
                     required
                   >
-                    <option value="">Selecione</option>
-                    <option value="ativo">Ativo</option>
-                    <option value="inativo">Inativo</option>
+                    <option value="" disabled hidden>Selecione</option>
+                    <option value="ativo" className="text-slate-800">Ativo</option>
+                    <option value="inativo" className="text-slate-800">Inativo</option>
                   </select>
                   <ChevronDown size={16} className="absolute right-3 top-3 text-slate-400 pointer-events-none" />
                 </div>
@@ -197,13 +233,15 @@ export default function NovoUsuario() {
                     name="perfil"
                     value={formData.perfil}
                     onChange={handleChange}
-                    className="w-full px-3 py-2.5 border border-slate-200 rounded-xl text-xs text-slate-500 focus:outline-none focus:border-[#3B42B2] appearance-none bg-white shadow-sm cursor-pointer"
+                    className={`w-full px-3 py-2.5 border border-slate-200 rounded-xl text-xs focus:outline-none focus:border-[#3B42B2] appearance-none bg-white shadow-sm cursor-pointer ${
+                      formData.perfil === '' ? 'text-slate-400' : 'text-slate-800'
+                    }`}
                     required
                   >
-                    <option value="">Selecione</option>
-                    <option value="professor">Professor</option>
-                    <option value="aluno">Aluno</option>
-                    <option value="recepcao">Recepção</option>
+                    <option value="" disabled hidden>Selecione</option>
+                    <option value="professor" className="text-slate-800">Professor</option>
+                    <option value="aluno" className="text-slate-800">Aluno</option>
+                    <option value="recepcao" className="text-slate-800">Recepção</option>
                   </select>
                   <ChevronDown size={16} className="absolute right-3 top-3 text-slate-400 pointer-events-none" />
                 </div>
@@ -252,89 +290,27 @@ export default function NovoUsuario() {
             </div>
 
             <div className="space-y-3 pt-1">
-              {/* Pacientes */}
-              <label className="flex items-start gap-3 cursor-pointer group">
-                <input
-                  type="checkbox"
-                  checked={formData.permissoes.pacientes}
-                  onChange={() => handleCheckboxChange('pacientes')}
-                  className="w-4 h-4 rounded border-slate-300 text-[#3B42B2] focus:ring-[#3B42B2] mt-0.5 cursor-pointer"
-                />
-                <div>
-                  <h4 className="font-bold text-slate-800 text-xs leading-tight">Pacientes</h4>
-                  <p className="text-[10px] text-slate-400 font-medium">Acesso ao cadastro e histórico</p>
-                </div>
-              </label>
-
-              {/* Cirurgias */}
-              <label className="flex items-start gap-3 cursor-pointer group">
-                <input
-                  type="checkbox"
-                  checked={formData.permissoes.cirurgias}
-                  onChange={() => handleCheckboxChange('cirurgias')}
-                  className="w-4 h-4 rounded border-slate-300 text-[#3B42B2] focus:ring-[#3B42B2] mt-0.5 cursor-pointer"
-                />
-                <div>
-                  <h4 className="font-bold text-slate-800 text-xs leading-tight">Cirurgias</h4>
-                  <p className="text-[10px] text-slate-400 font-medium">Gestão de cirurgias e mutirões</p>
-                </div>
-              </label>
-
-              {/* CME */}
-              <label className="flex items-start gap-3 cursor-pointer group">
-                <input
-                  type="checkbox"
-                  checked={formData.permissoes.cme}
-                  onChange={() => handleCheckboxChange('cme')}
-                  className="w-4 h-4 rounded border-slate-300 text-[#3B42B2] focus:ring-[#3B42B2] mt-0.5 cursor-pointer"
-                />
-                <div>
-                  <h4 className="font-bold text-slate-800 text-xs leading-tight">CME</h4>
-                  <p className="text-[10px] text-slate-400 font-medium">Central de Material Esterilizado</p>
-                </div>
-              </label>
-
-              {/* Consultas */}
-              <label className="flex items-start gap-3 cursor-pointer group">
-                <input
-                  type="checkbox"
-                  checked={formData.permissoes.consultas}
-                  onChange={() => handleCheckboxChange('consultas')}
-                  className="w-4 h-4 rounded border-slate-300 text-[#3B42B2] focus:ring-[#3B42B2] mt-0.5 cursor-pointer"
-                />
-                <div>
-                  <h4 className="font-bold text-slate-800 text-xs leading-tight">Consultas</h4>
-                  <p className="text-[10px] text-slate-400 font-medium">Agendamento e gestão</p>
-                </div>
-              </label>
-
-              {/* Estoque */}
-              <label className="flex items-start gap-3 cursor-pointer group">
-                <input
-                  type="checkbox"
-                  checked={formData.permissoes.estoque}
-                  onChange={() => handleCheckboxChange('estoque')}
-                  className="w-4 h-4 rounded border-slate-300 text-[#3B42B2] focus:ring-[#3B42B2] mt-0.5 cursor-pointer"
-                />
-                <div>
-                  <h4 className="font-bold text-slate-800 text-xs leading-tight">Estoque</h4>
-                  <p className="text-[10px] text-slate-400 font-medium">Controle de estoque e materiais</p>
-                </div>
-              </label>
-
-              {/* Configurações */}
-              <label className="flex items-start gap-3 cursor-pointer group">
-                <input
-                  type="checkbox"
-                  checked={formData.permissoes.configuracoes}
-                  onChange={() => handleCheckboxChange('configuracoes')}
-                  className="w-4 h-4 rounded border-slate-300 text-[#3B42B2] focus:ring-[#3B42B2] mt-0.5 cursor-pointer"
-                />
-                <div>
-                  <h4 className="font-bold text-slate-800 text-xs leading-tight">Configurações</h4>
-                  <p className="text-[10px] text-slate-400 font-medium">Acesso às configurações</p>
-                </div>
-              </label>
+              {[
+                { id: 'pacientes', label: 'Pacientes', desc: 'Acesso ao cadastro e histórico' },
+                { id: 'cirurgias', label: 'Cirurgias', desc: 'Gestão de cirurgias e mutirões' },
+                { id: 'cme', label: 'CME', desc: 'Central de Material Esterilizado' },
+                { id: 'consultas', label: 'Consultas', desc: 'Agendamento e gestão' },
+                { id: 'estoque', label: 'Estoque', desc: 'Controle de estoque e materiais' },
+                { id: 'configuracoes', label: 'Configurações', desc: 'Acesso às configurações' },
+              ].map((item) => (
+                <label key={item.id} className="flex items-start gap-3 cursor-pointer group">
+                  <input
+                    type="checkbox"
+                    checked={formData.permissoes[item.id]}
+                    onChange={() => handleCheckboxChange(item.id)}
+                    className="w-4 h-4 rounded border-slate-300 text-[#3B42B2] focus:ring-[#3B42B2] mt-0.5 cursor-pointer accent-[#3B42B2]"
+                  />
+                  <div>
+                    <h4 className="font-bold text-slate-800 text-xs leading-tight">{item.label}</h4>
+                    <p className="text-[10px] text-slate-400 font-medium">{item.desc}</p>
+                  </div>
+                </label>
+              ))}
             </div>
           </div>
 

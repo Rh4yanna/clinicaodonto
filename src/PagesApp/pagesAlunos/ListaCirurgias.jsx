@@ -5,10 +5,10 @@ import { ArrowLeft, Calendar, MapPin, ChevronRight, Info } from 'lucide-react';
 export default function ListaCirurgias() {
   const navigate = useNavigate();
 
-  // 1. Puxa a data REAL e ATUAL do sistema
+  // Data atual do sistema
   const [dataSelecionada, setDataSelecionada] = useState(new Date());
 
-  // 2. Formata para "Hoje, 28 de Julho de 2026"
+  // Formata para "Hoje, DD de Mês de AAAA" ou "DD de Mês de AAAA"
   const formatarDataExtenso = (date) => {
     const hoje = new Date();
     const ehHoje = 
@@ -16,14 +16,13 @@ export default function ListaCirurgias() {
       date.getMonth() === hoje.getMonth() &&
       date.getFullYear() === hoje.getFullYear();
 
-    // Idioma em pt-BR para puxar o mês em português
     const dataFormatada = date.toLocaleDateString('pt-BR', {
       day: 'numeric',
       month: 'long',
       year: 'numeric'
     });
     
-    // Capitaliza a primeira letra do mês (ex: "julho" -> "Julho")
+    // Capitaliza o mês (ex: "julho" -> "Julho")
     const partes = dataFormatada.split(' de ');
     if (partes[1]) {
       partes[1] = partes[1].charAt(0).toUpperCase() + partes[1].slice(1);
@@ -31,6 +30,14 @@ export default function ListaCirurgias() {
 
     const dataFinal = partes.join(' de ');
     return ehHoje ? `Hoje, ${dataFinal}` : dataFinal;
+  };
+
+  // Converte objeto Date para string YYYY-MM-DD local sem desvio de fuso horário
+  const formatarParaInputDate = (date) => {
+    const ano = date.getFullYear();
+    const mes = String(date.getMonth() + 1).padStart(2, '0');
+    const dia = String(date.getDate()).padStart(2, '0');
+    return `${ano}-${mes}-${dia}`;
   };
 
   const handleDataChange = (e) => {
@@ -47,7 +54,8 @@ export default function ListaCirurgias() {
       paciente: "Rhaya Borges",
       procedimento: "Exodontia - 36",
       professor: "Prof. Dr. Carlos Eduardo",
-      local: "Centro Cirúrgico"
+      local: "Centro Cirúrgico",
+      status: "Confirmada"
     },
     {
       id: 2,
@@ -55,7 +63,8 @@ export default function ListaCirurgias() {
       paciente: "Nome do paciente",
       procedimento: "Extração de siso",
       professor: "Prof. Dra. Ana Maria",
-      local: "Centro Cirúrgico"
+      local: "Centro Cirúrgico",
+      status: "Pendente"
     }
   ];
 
@@ -64,36 +73,43 @@ export default function ListaCirurgias() {
       {/* TOPO FIXO */}
       <div className="bg-[#3B44A8] pt-10 pb-6 px-6 text-white flex items-center justify-between shadow-md rounded-b-[24px] shrink-0">
         <button 
+          type="button"
           onClick={() => navigate(-1)}
-          className="p-1 hover:bg-white/10 rounded-lg transition active:scale-95"
+          aria-label="Voltar para tela anterior"
+          className="p-1 hover:bg-white/10 rounded-lg transition active:scale-95 cursor-pointer"
         >
           <ArrowLeft size={22} />
         </button>
         
-        <h1 className="text-lg font-bold tracking-wide mr-8">Lista de Cirurgias</h1>
-        <div className="w-6"></div>
+        <h1 className="text-lg font-bold tracking-wide flex-1 text-center mr-6">
+          Lista de Cirurgias
+        </h1>
       </div>
 
       {/* CONTEÚDO ROLÁVEL */}
       <div className="flex-1 overflow-y-auto px-5 py-6 space-y-4 pb-20">
         
         {/* CARD DA DATA DINÂMICA */}
-        <div className="relative w-full border border-gray-200 rounded-2xl px-4 py-3.5 flex items-center justify-between shadow-xs bg-white select-none hover:border-[#3B44A8] transition">
+        <div 
+          role="region"
+          aria-label="Seleção de data para filtragem de cirurgias"
+          className="relative w-full border border-gray-200 rounded-2xl px-4 py-3.5 flex items-center justify-between shadow-xs bg-white select-none hover:border-[#3B44A8] transition cursor-pointer"
+        >
           <span className="text-[#3B44A8] font-bold text-xs">
             {formatarDataExtenso(dataSelecionada)}
           </span>
           <Calendar className="text-[#3B44A8]" size={18} />
 
-          {/* Input invisível que abre o calendário nativo ao clicar */}
           <input 
             type="date"
-            value={dataSelecionada.toISOString().split('T')[0]}
+            aria-label="Alterar data selecionada"
+            value={formatarParaInputDate(dataSelecionada)}
             onChange={handleDataChange}
             className="absolute inset-0 opacity-0 w-full h-full cursor-pointer"
           />
         </div>
 
-        {/* SELECTOR/INFORMAÇÃO SECUNDÁRIA (MUTIRÃO) */}
+        {/* SELECTOR SECUNDÁRIO (MUTIRÃO) */}
         <div className="w-full border border-gray-200 rounded-2xl px-4 py-3.5 flex items-center justify-between shadow-xs bg-white select-none">
           <span className="text-[#3B44A8] font-bold text-xs">Mutirão Cirúrgico</span>
           <Calendar className="text-[#3B44A8]" size={18} />
@@ -123,7 +139,7 @@ export default function ListaCirurgias() {
           {cirurgiasHoje.map((cirurgia) => (
             <div 
               key={cirurgia.id} 
-              onClick={() => navigate('/app/professor/cirurgias/detalhes')}
+              onClick={() => navigate('/app/aluno/cirurgias/detalhes', { state: { cirurgia } })}
               className="p-4 flex items-center justify-between hover:bg-gray-50 transition cursor-pointer select-none active:bg-gray-100"
             >
               <div className="text-gray-500 font-medium text-xs w-10 pr-1 text-center shrink-0">
@@ -140,9 +156,16 @@ export default function ListaCirurgias() {
                 </div>
                 
                 <div className="min-w-0 flex-1">
-                  <h4 className="font-bold text-gray-950 text-xs truncate">
-                    {cirurgia.paciente}
-                  </h4>
+                  <div className="flex items-center gap-1.5">
+                    <h2 className="font-bold text-gray-950 text-xs truncate">
+                      {cirurgia.paciente}
+                    </h2>
+                    <span className={`text-[8px] font-bold px-1.5 py-0.5 rounded-full ${
+                      cirurgia.status === 'Confirmada' ? 'bg-emerald-100 text-emerald-700' : 'bg-amber-100 text-amber-700'
+                    }`}>
+                      {cirurgia.status}
+                    </span>
+                  </div>
                   <p className="text-[#3B44A8] text-[11px] font-semibold truncate">
                     {cirurgia.procedimento}
                   </p>

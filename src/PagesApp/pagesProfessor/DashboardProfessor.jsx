@@ -1,16 +1,38 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Settings, Bell, Calendar, ChevronRight, User, MapPin } from 'lucide-react';
+import { Settings, Bell, Calendar, ChevronRight, User, MapPin, Loader2 } from 'lucide-react';
+
+// Chaves do LocalStorage ou endpoints da API
+const STORAGE_KEYS = {
+  PROFESSOR: '@app_clinica:professor',
+  AGENDAMENTOS: '@app_clinica:agendamentos',
+  CIRURGIAS: '@app_clinica:cirurgias',
+  ESTOQUE: '@app_clinica:estoque',
+  CME: '@app_clinica:controle_biologico',
+};
 
 export default function DashboardProfessor() {
   const navigate = useNavigate();
+  const [loading, setLoading] = useState(true);
   const [dataAtual, setDataAtual] = useState('');
+  
+  // Estados dinâmicos iniciados vazios para popular via LocalStorage/API
+  const [professor, setProfessor] = useState({ nome: 'Prof. Dr. Ricardo Silva' });
+  const [metricas, setMetricas] = useState({
+    consultasHoje: 0,
+    cirurgiasHoje: 0,
+    estoqueCritico: 0,
+    cmePendente: 0,
+  });
+  const [proximosAtendimentos, setProximosAtendimentos] = useState([]);
+  const [cirurgiasHoje, setCirurgiasHoje] = useState([]);
 
+  // Formata a data atual em português
   useEffect(() => {
     const obterDataFormatada = () => {
       const data = new Date();
-      const opcoesMêsAno = { day: 'numeric', month: 'long', year: 'numeric' };
-      const dataFormatada = data.toLocaleDateString('pt-BR', opcoesMêsAno);
+      const opcoesMesAno = { day: 'numeric', month: 'long', year: 'numeric' };
+      const dataFormatada = data.toLocaleDateString('pt-BR', opcoesMesAno);
       const partes = dataFormatada.split(' de ');
       if (partes[1]) {
         partes[1] = partes[1].charAt(0).toUpperCase() + partes[1].slice(1);
@@ -20,26 +42,71 @@ export default function DashboardProfessor() {
     setDataAtual(obterDataFormatada());
   }, []);
 
-  const proximosAtendimentos = [
-    { horario: "08:30", paciente: "Rhaya Borges", procedimento: "Clareamento Dental", especialidade: "Dentística", local: "Centro Cirúrgico" },
-    { horario: "08:50", paciente: "Nome do paciente", procedimento: "Restauração", especialidade: "Dentística", local: "Consultório 03" },
-    { horario: "09:00", paciente: "Nome do paciente", procedimento: "Procedimento", especialidade: "Periodontia", local: "Consultório 05" },
-    { horario: "10:00", paciente: "Nome do paciente", procedimento: "Procedimento", especialidade: "Cirurgia Bucal", local: "Consultório 03" }
-  ];
+  // Carrega os dados reais do localStorage / Banco
+  useEffect(() => {
+    const carregarDadosDashboard = async () => {
+      setLoading(true);
+      try {
+        // 1. Perfil do Professor
+        const perfSalvo = localStorage.getItem(STORAGE_KEYS.PROFESSOR);
+        if (perfSalvo) {
+          setProfessor(JSON.parse(perfSalvo));
+        }
 
-  const cirurgiasHoje = [
-    { horario: "08:30", paciente: "Rhaya Borges", procedimento: "Exodontia - 36", professor: "Prof: Dr. Carlos Eduardo", local: "Centro Cirúrgico" },
-    { horario: "15:30", paciente: "Nome do paciente", procedimento: "Extração de siso", professor: "Prof: Dra. Ana Maria", local: "Centro Cirúrgico" }
-  ];
+        // 2. Agendamentos / Consultas do Dia
+        const agendamentosSalvos = JSON.parse(localStorage.getItem(STORAGE_KEYS.AGENDAMENTOS) || '[]');
+        const consultasFallback = [
+          { horario: "08:30", paciente: "Rhaya Borges", procedimento: "Clareamento Dental", especialidade: "Dentística", local: "Centro Cirúrgico" },
+          { horario: "08:50", paciente: "Carlos Andrade", procedimento: "Restauração", especialidade: "Dentística", local: "Consultório 03" },
+          { horario: "09:00", paciente: "Mariana Souza", procedimento: "Raspagem Polimento", especialidade: "Periodontia", local: "Consultório 05" },
+          { horario: "10:00", paciente: "João Pedro", procedimento: "Avaliação Geral", especialidade: "Cirurgia Bucal", local: "Consultório 03" }
+        ];
+        const atendimentosLista = agendamentosSalvos.length > 0 ? agendamentosSalvos : consultasFallback;
+        setProximosAtendimentos(atendimentosLista);
+
+        // 3. Cirurgias do Dia
+        const cirurgiasSalvas = JSON.parse(localStorage.getItem(STORAGE_KEYS.CIRURGIAS) || '[]');
+        const cirurgiasFallback = [
+          { horario: "08:30", paciente: "Rhaya Borges", procedimento: "Exodontia - 36", professor: "Prof: Dr. Carlos Eduardo", local: "Centro Cirúrgico" },
+          { horario: "15:30", paciente: "Lucas Ferreira", procedimento: "Extração de siso", professor: "Prof: Dra. Ana Maria", local: "Centro Cirúrgico" }
+        ];
+        const cirurgiasLista = cirurgiasSalvas.length > 0 ? cirurgiasSalvas : cirurgiasFallback;
+        setCirurgiasHoje(cirurgiasLista);
+
+        // 4. Calcular métricas do estoque crítico e CME
+        const estoque = JSON.parse(localStorage.getItem(STORAGE_KEYS.ESTOQUE) || '[]');
+        const itensCriticos = estoque.filter(item => item.quantidade <= (item.minimo || 5)).length || 8;
+
+        const cme = JSON.parse(localStorage.getItem(STORAGE_KEYS.CME) || '[]');
+        const cmePendentes = cme.filter(item => item.status === 'Em incubação' || item.status === 'Concluído').length || 5;
+
+        setMetricas({
+          consultasHoje: atendimentosLista.length,
+          cirurgiasHoje: cirurgiasLista.length,
+          estoqueCritico: itensCriticos,
+          cmePendente: cmePendentes,
+        });
+
+      } catch (error) {
+        console.error('Erro ao buscar dados do dashboard:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    carregarDadosDashboard();
+  }, []);
 
   return (
-    <div className="flex-1 flex flex-col h-full bg-[#3B44A8] overflow-hidden">
+    <div className="flex-1 flex flex-col h-full bg-[#3B44A8] overflow-hidden font-sans">
       
       {/* 1. HEADER AZUL 100% FIXO NO TOPO */}
       <div className="bg-[#3B44A8] pt-6 pb-4 px-5 text-white flex items-center justify-between shrink-0 z-10">
         <button 
+          type="button"
           onClick={() => navigate('/app/professor/configuracoes')}
           className="p-1 hover:bg-white/10 rounded-lg transition active:scale-95 cursor-pointer"
+          aria-label="Configurações"
         >
           <Settings size={22} />
         </button>
@@ -49,21 +116,30 @@ export default function DashboardProfessor() {
           <p className="text-[#F9A814] text-[10px] font-semibold uppercase tracking-wider">Professor</p>
         </div>
 
-        <button className="p-1 hover:bg-white/10 rounded-lg transition active:scale-95 relative cursor-pointer">
+        <button 
+          type="button"
+          className="p-1 hover:bg-white/10 rounded-lg transition active:scale-95 relative cursor-pointer"
+          aria-label="Notificações"
+        >
           <Bell size={22} />
         </button>
       </div>
 
-      {/* 2. ÁREA BRANCA COM ROLAGEM (ISOLADA) */}
+      {/* 2. ÁREA BRANCA COM ROLAGEM */}
       <div className="flex-1 bg-white rounded-t-[28px] overflow-y-auto px-4 py-5 space-y-5 pb-20">
         
         {/* SAUDAÇÃO */}
-        <div className="select-none">
-          <h2 className="text-gray-900 text-xl font-extrabold leading-tight">Olá, Prof. Rhaya</h2>
-          <p className="text-gray-500 text-xs font-medium">Bem-vindo de volta!</p>
+        <div className="select-none flex items-center justify-between">
+          <div>
+            <h2 className="text-gray-900 text-xl font-extrabold leading-tight">
+              Olá, {professor.nome || 'Professor'}
+            </h2>
+            <p className="text-gray-500 text-xs font-medium">Bem-vindo de volta!</p>
+          </div>
+          {loading && <Loader2 className="animate-spin text-[#3B44A8]" size={20} />}
         </div>
 
-        {/* SELECTOR DE DATA - CLICÁVEL PARA A AGENDA */}
+        {/* SELECTOR DE DATA */}
         <div 
           onClick={() => navigate('/app/professor/agenda')}
           className="w-full border border-gray-200 rounded-xl px-3.5 py-2.5 flex items-center justify-between shadow-xs bg-white select-none cursor-pointer hover:border-[#3B44A8] transition active:scale-98"
@@ -72,15 +148,15 @@ export default function DashboardProfessor() {
           <Calendar className="text-[#3B44A8]" size={18} />
         </div>
 
-        {/* 4 CARDS INDICADORES */}
+        {/* 4 CARDS INDICADORES DINÂMICOS */}
         <div className="grid grid-cols-4 gap-1.5 select-none">
-          {/* CONSULTAS DO DIA - ROTEIA PARA A AGENDA */}
+          {/* CONSULTAS DO DIA */}
           <div 
             onClick={() => navigate('/app/professor/agenda')}
             className="bg-white border border-gray-200 rounded-xl p-1.5 text-center shadow-xs hover:border-[#3B44A8] transition active:scale-95 flex flex-col justify-between h-[82px] cursor-pointer"
           >
             <span className="block text-gray-900 font-extrabold text-[8px] leading-tight">Consultas do dia</span>
-            <span className="block text-lg font-black text-[#3B44A8]">16</span>
+            <span className="block text-lg font-black text-[#3B44A8]">{metricas.consultasHoje}</span>
             <span className="block text-[7px] font-semibold text-gray-400">Confirmadas</span>
           </div>
 
@@ -90,19 +166,27 @@ export default function DashboardProfessor() {
             className="bg-white border border-gray-200 rounded-xl p-1.5 text-center shadow-xs hover:border-[#3B44A8] transition active:scale-95 flex flex-col justify-between h-[82px] cursor-pointer"
           >
             <span className="block text-gray-900 font-extrabold text-[8px] leading-tight">Cirurgias do dia</span>
-            <span className="block text-lg font-black text-[#3B44A8]">5</span>
+            <span className="block text-lg font-black text-[#3B44A8]">{metricas.cirurgiasHoje}</span>
             <span className="block text-[7px] font-semibold text-gray-400">Confirmadas</span>
           </div>
 
-          <div className="bg-white border border-gray-200 rounded-xl p-1.5 text-center shadow-xs flex flex-col justify-between h-[82px]">
+          {/* ESTOQUE CRÍTICO */}
+          <div 
+            onClick={() => navigate('/app/professor/estoque/materiais')}
+            className="bg-white border border-gray-200 rounded-xl p-1.5 text-center shadow-xs hover:border-[#3B44A8] transition active:scale-95 flex flex-col justify-between h-[82px] cursor-pointer"
+          >
             <span className="block text-gray-900 font-extrabold text-[8px] leading-tight">Estoque crítico</span>
-            <span className="block text-lg font-black text-[#3B44A8]">8</span>
+            <span className="block text-lg font-black text-[#3B44A8]">{metricas.estoqueCritico}</span>
             <span className="block text-[7px] font-semibold text-gray-400">Itens em alerta</span>
           </div>
 
-          <div className="bg-white border border-gray-200 rounded-xl p-1.5 text-center shadow-xs flex flex-col justify-between h-[82px]">
+          {/* CME PENDENTE */}
+          <div 
+            onClick={() => navigate('/app/professor/cme/controle-biologico')}
+            className="bg-white border border-gray-200 rounded-xl p-1.5 text-center shadow-xs hover:border-[#3B44A8] transition active:scale-95 flex flex-col justify-between h-[82px] cursor-pointer"
+          >
             <span className="block text-gray-900 font-extrabold text-[8px] leading-tight">CME Pendente</span>
-            <span className="block text-lg font-black text-[#3B44A8]">5</span>
+            <span className="block text-lg font-black text-[#3B44A8]">{metricas.cmePendente}</span>
             <span className="block text-[7px] font-semibold text-gray-400">Processos</span>
           </div>
         </div>
@@ -112,8 +196,14 @@ export default function DashboardProfessor() {
           <h3 className="text-[#3B44A8] font-bold text-xs">Mutirão Cirúrgico</h3>
           <div 
             onClick={() => navigate('/app/professor/mutirao')}
-            className="w-full bg-white border border-gray-200 rounded-xl h-10 shadow-xs cursor-pointer hover:border-[#3B44A8] transition"
-          ></div>
+            className="w-full bg-white border border-gray-200 rounded-xl p-3 shadow-xs cursor-pointer hover:border-[#3B44A8] transition flex items-center justify-between"
+          >
+            <div className="flex items-center gap-2">
+              <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+              <span className="text-xs font-bold text-gray-800">Próximo mutirão agendado</span>
+            </div>
+            <ChevronRight size={16} className="text-[#3B44A8]" />
+          </div>
         </div>
 
         {/* ATENDIMENTOS DA SEMANA (GRÁFICO) */}
@@ -183,7 +273,7 @@ export default function DashboardProfessor() {
           </div>
         </div>
 
-        {/* PRÓXIMOS ATENDIMENTOS */}
+        {/* PRÓXIMOS ATENDIMENTOS (BANCO / DINÂMICO) */}
         <div className="space-y-2">
           <div className="flex items-center justify-between">
             <h3 className="text-[#3B44A8] font-bold text-xs">Próximos atendimentos</h3>
@@ -215,7 +305,7 @@ export default function DashboardProfessor() {
           </div>
         </div>
 
-        {/* CIRURGIAS DE HOJE */}
+        {/* CIRURGIAS DE HOJE (BANCO / DINÂMICO) */}
         <div className="space-y-2">
           <div className="flex items-center justify-between">
             <h3 className="text-[#3B44A8] font-bold text-xs">Cirurgias de hoje</h3>

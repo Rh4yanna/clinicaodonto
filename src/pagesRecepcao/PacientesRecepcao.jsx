@@ -1,44 +1,62 @@
-import { useState } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Search, User, ChevronRight, Plus, ArrowLeft } from 'lucide-react';
+import { Search, User, ChevronRight, Plus, ArrowLeft, Loader2, AlertCircle } from 'lucide-react';
+import api from '../Services/api'; // Ajustado caminho e maiúscula para Services
 
 export default function PacientesRecepcao() {
   const navigate = useNavigate();
   const [busca, setBusca] = useState('');
   const [filtro, setFiltro] = useState('todos');
 
-  // Dados mockados estruturados com os dados do prontuário para exibição dinâmica
-  const listaPacientes = [
-    { 
-      id: 1, 
-      nome: 'Rhayanna Borges Tonete', 
-      cpf: '012.123.456-89', 
-      status: 'ativo',
-      telefone: '(42) 99999-9999',
-      email: 'engs-rhayannatonete@camporeal.edu.br',
-      dataNascimento: '14/02/2005',
-      endereco: 'Rua Diogo Emanoel de Almeida, 200',
-      bairro: 'Centro',
-      cidade: 'Guamiranga',
-      uf: 'PR',
-      responsavel: { nome: 'Nome do responsável', telefone: '(42) 88888-8888' }
-    },
-    { id: 2, nome: 'Glória Maria de Oliveira', cpf: '234.567.890-12', status: 'ativo', telefone: '(42) 98888-7777', email: 'gloria@email.com', dataNascimento: '25/11/1998', endereco: 'Av. Principal, 10', bairro: 'Batel', cidade: 'Guarapuava', uf: 'PR', responsavel: { nome: '', telefone: '' } },
-    { id: 3, nome: 'Marcos André Santos', cpf: '345.678.901-23', status: 'ativo', telefone: '(42) 97777-6666', email: 'marcos@email.com', dataNascimento: '05/04/1985', endereco: 'Rua das Flores, 450', bairro: 'Santana', cidade: 'Guamiranga', uf: 'PR', responsavel: { nome: '', telefone: '' } },
-    { id: 4, nome: 'Nome do paciente', cpf: '000.000.000-00', status: 'inativo', telefone: '(42) 00000-0000', email: 'paciente@email.com', dataNascimento: '01/01/2000', endereco: 'Rua Exemplo, 123', bairro: 'Bairro', cidade: 'Cidade', uf: 'PR', responsavel: { nome: '', telefone: '' } },
-  ];
+  const [listaPacientes, setListaPacientes] = useState([]);
+  const [carregando, setCarregando] = useState(true);
+  const [erro, setErro] = useState('');
 
-  const pacientesFiltrados = listaPacientes.filter(paciente => {
-    const correspondeBusca = paciente.nome.toLowerCase().includes(busca.toLowerCase()) || 
-                             paciente.cpf.includes(busca);
-    
+  // Carrega lista de pacientes da API
+  const carregarPacientes = useCallback(async () => {
+    try {
+      setCarregando(true);
+      setErro('');
+
+      const resposta = await api.get('/pacientes');
+      setListaPacientes(resposta.data || []);
+    } catch (err) {
+      console.error('Erro ao buscar pacientes:', err);
+      setErro('Não foi possível carregar a lista de pacientes.');
+    } finally {
+      setCarregando(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    carregarPacientes();
+  }, [carregarPacientes]);
+
+  // Filtra pacientes localmente por busca e status
+  const pacientesFiltrados = listaPacientes.filter((paciente) => {
+    const termoBusca = busca.toLowerCase();
+    const nome = (paciente.nome || '').toLowerCase();
+    const cpf = (paciente.cpf || '').replace(/\D/g, '');
+    const buscaLimpa = termoBusca.replace(/\D/g, '');
+
+    const correspondeBusca = 
+      nome.includes(termoBusca) || 
+      (buscaLimpa !== '' && cpf.includes(buscaLimpa)) ||
+      (paciente.cpf || '').includes(termoBusca);
+
+    const statusPaciente = (paciente.status || (paciente.ativo ? 'ativo' : 'inativo')).toLowerCase();
+
     if (filtro === 'todos') return correspondeBusca;
-    return correspondeBusca && paciente.status === filtro;
+    if (filtro === 'ativos') return correspondeBusca && (statusPaciente === 'ativo' || paciente.ativo === true);
+    if (filtro === 'inativos') return correspondeBusca && (statusPaciente === 'inativo' || paciente.ativo === false);
+
+    return correspondeBusca;
   });
 
   return (
     <div className="flex flex-col w-full min-h-full bg-transparent font-sans">
       
+      {/* HEADER DA PÁGINA */}
       <header className="bg-white border-b border-gray-200 h-20 px-8 flex items-center justify-between select-none shrink-0">
         <div className="flex items-center gap-4">
           <button 
@@ -58,8 +76,10 @@ export default function PacientesRecepcao() {
         </button>
       </header>
 
+      {/* CONTEÚDO PRINCIPAL */}
       <div className="p-8 max-w-7xl w-full mx-auto space-y-6 flex-1 flex flex-col min-h-0">
         
+        {/* BARRA DE FILTROS E PESQUISA */}
         <div className="bg-white border border-gray-200 rounded-2xl p-4 shadow-sm flex flex-col md:flex-row gap-4 items-center justify-between select-none">
           <div className="flex bg-gray-100 p-1 rounded-xl w-full md:w-auto">
             {['todos', 'ativos', 'inativos'].map((tipo) => (
@@ -89,7 +109,24 @@ export default function PacientesRecepcao() {
           </div>
         </div>
 
-        {pacientesFiltrados.length === 0 ? (
+        {/* FEEDBACK DE CARREGAMENTO */}
+        {carregando ? (
+          <div className="flex-1 bg-white border border-gray-200 rounded-2xl p-12 flex flex-col items-center justify-center text-center shadow-sm min-h-[350px] text-gray-500 gap-3">
+            <Loader2 size={32} className="animate-spin text-[#3B44A8]" />
+            <p className="text-sm font-medium">Carregando pacientes...</p>
+          </div>
+        ) : erro ? (
+          <div className="flex-1 bg-white border border-gray-200 rounded-2xl p-12 flex flex-col items-center justify-center text-center shadow-sm min-h-[350px] text-gray-500 gap-3">
+            <AlertCircle size={36} className="text-red-500" />
+            <p className="text-sm font-bold text-gray-800">{erro}</p>
+            <button 
+              onClick={carregarPacientes}
+              className="text-xs text-[#3B44A8] font-bold underline mt-1"
+            >
+              Tentar novamente
+            </button>
+          </div>
+        ) : pacientesFiltrados.length === 0 ? (
           <div className="flex-1 bg-white border border-gray-200 rounded-2xl p-12 flex flex-col items-center justify-center text-center shadow-sm min-h-[350px]">
             <div className="p-4 bg-gray-50 text-gray-400 rounded-full mb-3 border border-gray-100">
               <User size={36} className="stroke-[1.5]" />
@@ -98,36 +135,41 @@ export default function PacientesRecepcao() {
             <p className="text-gray-400 text-xs mt-1 max-w-xs">Não encontramos nenhum paciente correspondente ao filtro selecionado.</p>
           </div>
         ) : (
+          /* GRID DE CARD DOS PACIENTES */
           <div className="flex-1 overflow-y-auto min-h-0 pr-1">
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-              {pacientesFiltrados.map((paciente) => (
-                <div 
-                  key={paciente.id}
-                  /* Comentário corrigido para a sintaxe do JSX */
-                  onClick={() => navigate('/app/recepcao/pacientes/detalhes', { state: { paciente } })}
-                  className="bg-white border border-gray-200 hover:border-[#3B44A8]/40 rounded-2xl p-5 flex items-center justify-between cursor-pointer shadow-sm hover:shadow-md transition-all group"
-                >
-                  <div className="flex items-center gap-4 min-w-0">
-                    <div className="p-3 bg-gray-50 group-hover:bg-[#3B44A8]/5 border border-gray-200 text-gray-700 group-hover:text-[#3B44A8] rounded-xl transition-colors shrink-0">
-                      <User size={20} className="stroke-[2]" />
+              {pacientesFiltrados.map((paciente) => {
+                const isAtivo = paciente.status === 'ativo' || paciente.ativo === true;
+
+                return (
+                  <div 
+                    key={paciente.id || paciente._id}
+                    onClick={() => navigate('/app/recepcao/pacientes/detalhes', { state: { paciente } })}
+                    className="bg-white border border-gray-200 hover:border-[#3B44A8]/40 rounded-2xl p-5 flex items-center justify-between cursor-pointer shadow-sm hover:shadow-md transition-all group"
+                  >
+                    <div className="flex items-center gap-4 min-w-0">
+                      <div className="p-3 bg-gray-50 group-hover:bg-[#3B44A8]/5 border border-gray-200 text-gray-700 group-hover:text-[#3B44A8] rounded-xl transition-colors shrink-0">
+                        <User size={20} className="stroke-[2]" />
+                      </div>
+                      <div className="min-w-0">
+                        <h3 className="font-bold text-sm text-gray-950 truncate leading-tight group-hover:text-[#3B44A8] transition-colors">
+                          {paciente.nome || 'Paciente sem nome'}
+                        </h3>
+                        <p className="text-gray-500 text-[11px] font-medium mt-1 flex items-center gap-2">
+                          <span>CPF: {paciente.cpf || 'Não informado'}</span>
+                          <span className={`w-1.5 h-1.5 rounded-full ${isAtivo ? 'bg-green-500' : 'bg-red-400'}`}></span>
+                        </p>
+                      </div>
                     </div>
-                    <div className="min-w-0">
-                      <h3 className="font-bold text-sm text-gray-950 truncate leading-tight group-hover:text-[#3B44A8] transition-colors">
-                        {paciente.nome}
-                      </h3>
-                      <p className="text-gray-500 text-[11px] font-medium mt-1 flex items-center gap-2">
-                        <span>CPF: {paciente.cpf}</span>
-                        <span className={`w-1.5 h-1.5 rounded-full ${paciente.status === 'ativo' ? 'bg-green-500' : 'bg-red-400'}`}></span>
-                      </p>
-                    </div>
+                    <ChevronRight size={18} className="text-gray-400 group-hover:text-[#3B44A8] transition-transform group-hover:translate-x-0.5 stroke-[2.5px]" />
                   </div>
-                  <ChevronRight size={18} className="text-gray-400 group-hover:text-[#3B44A8] transition-transform group-hover:translate-x-0.5 stroke-[2.5px]" />
-                </div>
-              ))}
+                );
+              })}
             </div>
           </div>
         )}
 
+        {/* BOTÃO FLUTUANTE DE CADASTRO MOBILE */}
         <div className="sm:hidden fixed bottom-6 right-6 select-none z-50">
           <button 
             onClick={() => navigate('/app/recepcao/pacientes/cadastro')}

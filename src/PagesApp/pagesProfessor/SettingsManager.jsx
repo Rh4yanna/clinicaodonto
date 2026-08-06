@@ -368,7 +368,7 @@ export default function SettingsManager({ onClose, onLogout }) {
                 >
                 <Plus size={18} />
                 <span>Adicionar usuário</span>
-                </button>
+              </button>
             )}
           </div>
         </div>
@@ -611,6 +611,7 @@ export default function SettingsManager({ onClose, onLogout }) {
                 </button>
               ))}
             </div>
+
             <div className="space-y-3">
               <div className="flex items-center justify-between px-1">
                 <h3 className="text-[#3B44A8] font-black text-xs">
@@ -620,9 +621,10 @@ export default function SettingsManager({ onClose, onLogout }) {
                   {perfilSelecionado}
                 </span>
               </div>
-              <div className="bg-white border border-gray-100 rounded-3xl p-5 shadow-sm space-y-4">
-                {permissoesPorPerfil[perfilSelecionado]?.map((perm, index) => (
-                  <div key={index} className="flex items-center justify-between border-b border-gray-50 pb-3 last:pb-0 last:border-0">
+
+              <div className="bg-white border border-gray-100 rounded-3xl p-4 shadow-sm divide-y divide-gray-100">
+                {(permissoesPorPerfil[perfilSelecionado] || []).map((perm, idx) => (
+                  <div key={idx} className="py-3 first:pt-0 last:pb-0 flex items-center justify-between">
                     <span className="text-xs font-bold text-gray-900">{perm.modulo}</span>
                     <span className="text-xs font-semibold text-[#3B44A8]">{perm.nivel}</span>
                   </div>

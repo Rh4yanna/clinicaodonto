@@ -20,7 +20,7 @@ export default function PreVisualizacaoEtiqueta() {
   const [qtdEtiquetas, setQtdEtiquetas] = useState(dados.quantidade);
 
   // =========================================================================
-  // GERADOR CORRIGIDO E REALISTA DE QR CODE (NATIVO E LIMPO)
+  // GERADOR DE QR CODE EM SVG
   // =========================================================================
   const gerarQRCodeSVG = (textoUnico) => {
     let hash = 0;
@@ -63,11 +63,18 @@ export default function PreVisualizacaoEtiqueta() {
     }
 
     return (
-      <svg width="68" height="68" viewBox={`0 0 ${tamanho} ${tamanho}`} className="w-16 h-16">
+      <svg 
+        width="68" 
+        height="68" 
+        viewBox={`0 0 ${tamanho} ${tamanho}`} 
+        className="w-16 h-16"
+        role="img"
+        aria-label="QR Code da etiqueta"
+      >
         <g fill="#000000">
           {matriz.map((row, rIdx) => 
             row.map((preenchido, cIdx) => 
-              prePreenchido(preenchido) ? (
+              preenchido ? (
                 <rect 
                   key={`${rIdx}-${cIdx}`} 
                   x={cIdx} 
@@ -82,12 +89,10 @@ export default function PreVisualizacaoEtiqueta() {
         </g>
       </svg>
     );
-
-    function prePreenchido(p) { return p; }
   };
 
   // =========================================================================
-  // GERADOR DE CÓDIGO DE BARRAS
+  // GERADOR DE CÓDIGO DE BARRAS EM SVG
   // =========================================================================
   const gerarCodigoDeBarrasSVG = (codigo) => {
     const strCodigo = String(codigo || '000000000000');
@@ -99,7 +104,15 @@ export default function PreVisualizacaoEtiqueta() {
     padraoLinhas = (padraoLinhas + '101011001101').repeat(2);
 
     return (
-      <svg width="100%" height="42" viewBox={`0 0 ${padraoLinhas.length} 42`} preserveAspectRatio="none" className="w-full">
+      <svg 
+        width="100%" 
+        height="42" 
+        viewBox={`0 0 ${padraoLinhas.length} 42`} 
+        preserveAspectRatio="none" 
+        className="w-full"
+        role="img"
+        aria-label={`Código de barras: ${strCodigo}`}
+      >
         <g fill="#000000">
           {padraoLinhas.split('').map((char, index) => {
             if (char === '1') {
@@ -112,36 +125,58 @@ export default function PreVisualizacaoEtiqueta() {
     );
   };
 
+  const handleImprimir = () => {
+    const agora = new Date();
+    const dataHoraFormatada = `${String(agora.getDate()).padStart(2, '0')}/${String(agora.getMonth() + 1).padStart(2, '0')}/${agora.getFullYear()} - ${String(agora.getHours()).padStart(2, '0')}:${String(agora.getMinutes()).padStart(2, '0')}`;
+
+    navigate('/app/aluno/estoque/impressao-concluida', {
+      state: {
+        nome: dados.material?.nome,
+        lote: dados.lote,
+        validade: dados.validade,
+        quantidadeImpressa: qtdEtiquetas,
+        dataHora: dataHoraFormatada,
+        usuario: "Pedro Guimarães"
+      }
+    });
+  };
+
   return (
     <div className="flex-1 flex flex-col min-h-0 bg-[#F8F9FD] font-sans pb-10">
       
-      {/* HEADER AZUL FIXO */}
+      {/* HEADER FIXO */}
       <div className="bg-[#3B44A8] pt-12 pb-6 px-6 text-white flex items-center shadow-md rounded-b-[24px] shrink-0 select-none">
         <button 
+          type="button"
           onClick={() => navigate(-1)}
-          className="p-1 hover:bg-white/10 rounded-lg transition active:scale-95 mr-4"
+          className="p-1 hover:bg-white/10 rounded-lg transition active:scale-95 cursor-pointer"
+          aria-label="Voltar para a página anterior"
         >
           <ArrowLeft size={24} />
         </button>
-        <h1 className="text-xl font-bold tracking-wide flex-1 text-center mr-8">Pré-visualização</h1>
+        <h1 className="text-xl font-bold tracking-wide flex-1 text-center mr-8">
+          Pré-visualização
+        </h1>
       </div>
 
       {/* CONTEÚDO */}
       <div className="flex-1 overflow-y-auto px-5 py-6 space-y-6">
         
         <div className="space-y-3">
-          <h2 className="text-[#3B44A8] font-bold text-sm tracking-wide px-1">Visualização da etiqueta</h2>
+          <h2 className="text-[#3B44A8] font-bold text-sm tracking-wide px-1">
+            Visualização da etiqueta
+          </h2>
           
-          <div className="bg-white border border-gray-200 rounded-3xl p-5 shadow-sm space-y-6 flex flex-col items-center">
+          <div className="bg-white border border-gray-200 rounded-3xl p-5 shadow-xs space-y-6 flex flex-col items-center">
             
             {/* CORPO DA ETIQUETA IMPRESSA */}
-            <div className="w-full border border-gray-300 rounded-2xl p-4 bg-white shadow-sm flex flex-col justify-between min-h-[260px] relative overflow-hidden">
+            <div className="w-full border border-gray-300 rounded-2xl p-4 bg-white shadow-xs flex flex-col justify-between min-h-[260px] relative overflow-hidden">
               
               <h3 className="text-center font-black text-gray-950 text-base uppercase tracking-tight truncate">
                 {dados.material?.nome}
               </h3>
 
-              {/* GRÁFICOS MELHORADOS */}
+              {/* GRÁFICOS */}
               <div className="flex items-center justify-between gap-4 py-3 px-1">
                 {dados.incluirQR && (
                   <div className="w-16 h-16 bg-white flex items-center justify-center shrink-0 p-0.5 border border-gray-100 rounded-md shadow-inner">
@@ -161,7 +196,7 @@ export default function PreVisualizacaoEtiqueta() {
                 )}
               </div>
 
-              {/* INFOS DA ETIQUETA */}
+              {/* INFORMAÇÕES DA ETIQUETA */}
               <div className="text-[11px] space-y-0.5 px-1 font-bold text-gray-600">
                 <div className="flex justify-between items-center">
                   <span>Lote:</span>
@@ -177,7 +212,7 @@ export default function PreVisualizacaoEtiqueta() {
                 </div>
               </div>
 
-              {/* RODAPÉ AZUL */}
+              {/* RODAPÉ */}
               <div className="bg-[#3B44A8] text-white text-[9px] font-semibold text-center py-2 px-3 rounded-xl mt-4 -mx-1 -mb-1 truncate shadow-inner">
                 {dados.localizacao}
               </div>
@@ -191,16 +226,19 @@ export default function PreVisualizacaoEtiqueta() {
           </div>
         </div>
 
-        {/* CONTADOR */}
+        {/* CONTADOR DE ETIQUETAS */}
         <div className="space-y-2 select-none">
-          <h3 className="text-[#3B44A8] font-bold text-sm tracking-wide px-1">Configurações</h3>
-          <div className="bg-white border border-gray-150 rounded-2xl p-4 flex items-center justify-between shadow-sm">
+          <h3 className="text-[#3B44A8] font-bold text-sm tracking-wide px-1">
+            Configurações
+          </h3>
+          <div className="bg-white border border-gray-150 rounded-2xl p-4 flex items-center justify-between shadow-xs">
             <span className="text-xs font-bold text-gray-900">Quantidade de etiquetas</span>
-            <div className="flex items-center border border-gray-300 rounded-xl bg-white overflow-hidden shadow-sm h-[36px]">
+            <div className="flex items-center border border-gray-300 rounded-xl bg-white overflow-hidden shadow-xs h-[36px]">
               <button 
                 type="button"
                 onClick={() => setQtdEtiquetas(q => Math.max(1, q - 1))} 
-                className="px-3 h-full hover:bg-gray-50 text-gray-500 border-r border-gray-100 transition flex items-center"
+                className="px-3 h-full hover:bg-gray-50 text-gray-500 border-r border-gray-100 transition flex items-center cursor-pointer"
+                aria-label="Diminuir quantidade de etiquetas"
               >
                 <Minus size={13} strokeWidth={2.5} />
               </button>
@@ -210,7 +248,8 @@ export default function PreVisualizacaoEtiqueta() {
               <button 
                 type="button"
                 onClick={() => setQtdEtiquetas(q => q + 1)} 
-                className="px-3 h-full hover:bg-gray-50 text-gray-500 border-l border-gray-100 transition flex items-center"
+                className="px-3 h-full hover:bg-gray-50 text-gray-500 border-l border-gray-100 transition flex items-center cursor-pointer"
+                aria-label="Aumentar quantidade de etiquetas"
               >
                 <Plus size={13} strokeWidth={2.5} />
               </button>
@@ -218,25 +257,11 @@ export default function PreVisualizacaoEtiqueta() {
           </div>
         </div>
 
-        {/* BOTÃO CLIQUE IMPRIMIR ATUALIZADO */}
+        {/* BOTÃO IMPRIMIR */}
         <button 
           type="button"
-          onClick={() => {
-            const agora = new Date();
-            const dataHoraFormatada = `${String(agora.getDate()).padStart(2, '0')}/${String(agora.getMonth() + 1).padStart(2, '0')}/${agora.getFullYear()} - ${String(agora.getHours()).padStart(2, '0')}:${String(agora.getMinutes()).padStart(2, '0')}`;
-
-            navigate('/app/aluno/estoque/impressao-concluida', {
-              state: {
-                nome: dados.material?.nome,
-                lote: dados.lote,
-                validade: dados.validade,
-                quantidadeImpressa: qtdEtiquetas,
-                dataHora: dataHoraFormatada,
-                usuario: "Pedro Guimarães"
-              }
-            });
-          }}
-          className="w-full bg-[#F59E0B] text-white font-bold py-4 rounded-2xl text-sm shadow-md flex items-center justify-center gap-2 hover:bg-[#D97706] transition active:scale-[0.98]"
+          onClick={handleImprimir}
+          className="w-full bg-[#F59E0B] text-white font-bold py-4 rounded-2xl text-sm shadow-md flex items-center justify-center gap-2 hover:bg-[#D97706] transition active:scale-[0.98] cursor-pointer"
         >
           <Printer size={18} strokeWidth={2.5} />
           Imprimir Etiqueta

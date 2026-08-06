@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   ArrowLeft,
@@ -6,21 +6,30 @@ import {
   ChevronRight,
   ChevronDown,
   ChevronUp,
-  MoreVertical
+  MoreVertical,
+  Loader2,
+  AlertCircle,
+  CalendarX
 } from 'lucide-react';
+import api from '../../Services/api';
 
 export default function AgendaAluno() {
   const navigate = useNavigate();
+
+  // Estados da API e UI
+  const [agendamentos, setAgendamentos] = useState([]);
+  const [carregando, setCarregando] = useState(true);
+  const [erro, setErro] = useState('');
 
   // Estados dos Modais / Dropdowns
   const [modalDisciplinasAberto, setModalDisciplinasAberto] = useState(false);
   const [disciplinaSelecionada, setDisciplinaSelecionada] = useState('Todas as disciplinas');
   const [menuAbertoId, setMenuAbertoId] = useState(null);
 
-  // ESTADOS DE DATA E CALENDÁRIO
+  // Estados de Data
   const [dataSelecionada, setDataSelecionada] = useState(new Date());
 
-  // Lista de Disciplinas disponíveis
+  // Lista de Disciplinas disponíveis para filtro
   const listaDisciplinas = [
     'Todas as disciplinas',
     'Dentística',
@@ -33,30 +42,67 @@ export default function AgendaAluno() {
     'Reabilitação Bucal'
   ];
 
-  // Dados Mockados da Agenda
-  const agendamentos = [
-    {
-      disciplina: 'Dentística',
-      pacientes: [
-        { id: 1, hora: '09:30', nome: 'Maria Silva', procedimento: 'Clareamento Dental' },
-        { id: 2, hora: '11:40', nome: 'João Santos', procedimento: 'Restauração' }
-      ]
-    },
-    {
-      disciplina: 'Endodontia',
-      pacientes: [
-        { id: 3, hora: '13:00', nome: 'Ana Beatriz', procedimento: 'Tratamento de Canal' }
-      ]
-    },
-    {
-      disciplina: 'Periodontia',
-      pacientes: []
+  // Helper para formatar data local no padrão YYYY-MM-DD
+  const formatarDataIso = (date) => {
+    const ano = date.getFullYear();
+    const mes = String(date.getMonth() + 1).padStart(2, '0');
+    const dia = String(date.getDate()).padStart(2, '0');
+    return `${ano}-${mes}-${dia}`;
+  };
+
+  // Busca os agendamentos da API filtrados pela data selecionada
+  const carregarAgendamentos = useCallback(async () => {
+    try {
+      setCarregando(true);
+      setErro('');
+      const dataFormatada = formatarDataIso(dataSelecionada);
+
+      // Chamada API (Ajuste o endpoint se necessário, ex: /agendamentos/aluno ou com params)
+      const resposta = await api.get('/agendamentos', {
+        params: { data: dataFormatada }
+      });
+
+      const dados = resposta.data || [];
+
+      // Se a API retornar a lista crua de agendamentos, agrupamos por disciplina
+      if (Array.isArray(dados)) {
+        const agrupado = dados.reduce((acc, item) => {
+          const nomeDisciplina = item.disciplina || item.disciplinaNome || 'Geral';
+          let grupo = acc.find((g) => g.disciplina === nomeDisciplina);
+
+          if (!grupo) {
+            grupo = { disciplina: nomeDisciplina, pacientes: [] };
+            acc.push(grupo);
+          }
+
+          grupo.pacientes.push({
+            id: item.id || item._id,
+            hora: item.hora || item.horario || '00:00',
+            nome: item.pacienteNome || item.paciente?.nome || 'Paciente sem nome',
+            procedimento: item.procedimento || item.tipoProcedimento || 'Consulta',
+            dadosOriginais: item
+          });
+
+          return acc;
+        }, []);
+
+        setAgendamentos(agrupado);
+      } else {
+        setAgendamentos([]);
+      }
+    } catch (err) {
+      console.error('Erro ao buscar agendamentos:', err);
+      setErro('Falha ao carregar agendamentos do dia.');
+    } finally {
+      setCarregando(false);
     }
-  ];
+  }, [dataSelecionada]);
+
+  useEffect(() => {
+    carregarAgendamentos();
+  }, [carregarAgendamentos]);
 
   // --- LÓGICA DE NAVEGAÇÃO DA SEMANA ---
-
-  // Retorna o primeiro dia (Domingo) da semana contendo a data informada
   const getInicioSemana = (date) => {
     const d = new Date(date);
     const day = d.getDay();
@@ -66,14 +112,12 @@ export default function AgendaAluno() {
 
   const inicioSemanaAtual = getInicioSemana(dataSelecionada);
 
-  // Gera os 7 dias da semana visível
   const diasDaSemana = Array.from({ length: 7 }, (_, i) => {
     const d = new Date(inicioSemanaAtual);
     d.setDate(d.getDate() + i);
     return d;
   });
 
-  // Funções para trocar de semana
   const semanaAnterior = () => {
     const novaData = new Date(dataSelecionada);
     novaData.setDate(novaData.getDate() - 7);
@@ -86,13 +130,11 @@ export default function AgendaAluno() {
     setDataSelecionada(novaData);
   };
 
-  // Formatação do Mês e Ano para o Cabeçalho
   const mesAnoFormatado = inicioSemanaAtual.toLocaleDateString('pt-BR', {
     month: 'long',
     year: 'numeric'
   });
 
-  // Comparador de datas (Ignora hora/minuto)
   const isMesmoDia = (d1, d2) => {
     return (
       d1.getDate() === d2.getDate() &&
@@ -101,10 +143,9 @@ export default function AgendaAluno() {
     );
   };
 
-  // Filtragem por disciplina
   const agendamentosFiltrados = agendamentos.filter((grupo) => {
     if (disciplinaSelecionada === 'Todas as disciplinas') return true;
-    return grupo.disciplina === disciplinaSelecionada;
+    return grupo.disciplina.toLowerCase() === disciplinaSelecionada.toLowerCase();
   });
 
   return (
@@ -128,7 +169,7 @@ export default function AgendaAluno() {
           Agenda de Atendimentos
         </h1>
 
-        <div className="w-9" /> {/* Espaçador */}
+        <div className="w-9" />
       </div>
 
       {/* 2. CARD PRINCIPAL BRANCO */}
@@ -162,7 +203,6 @@ export default function AgendaAluno() {
               <ChevronLeft className="w-5 h-5" />
             </button>
             
-            {/* Exibe o Mês e Ano dinâmico */}
             <span>{mesAnoFormatado}</span>
 
             <button 
@@ -173,7 +213,6 @@ export default function AgendaAluno() {
             </button>
           </div>
 
-          {/* Dias da semana (Cabeçalho fixo Dom - Sáb) */}
           <div className="grid grid-cols-7 text-center gap-1">
             {['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'].map((dia, idx) => (
               <span key={idx} className="text-[10px] font-bold text-slate-400">
@@ -181,7 +220,6 @@ export default function AgendaAluno() {
               </span>
             ))}
 
-            {/* Dias do mês renderizados dinamicamente */}
             {diasDaSemana.map((dataItem, idx) => {
               const ativo = isMesmoDia(dataItem, dataSelecionada);
               return (
@@ -202,99 +240,113 @@ export default function AgendaAluno() {
           </div>
         </div>
 
-        {/* LISTA DE ATENDIMENTOS POR DISCIPLINA */}
-        <div className="space-y-4 pb-6">
-          {agendamentosFiltrados.map((grupo, idx) => (
-            <div key={idx} className="border border-slate-200 rounded-2xl p-4 bg-white shadow-xs space-y-3">
-              {/* Título do Grupo */}
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <div className="w-6 h-6 rounded-full bg-amber-500/10 flex items-center justify-center text-amber-500">
-                    🦷
+        {/* LISTA DE ATENDIMENTOS OU ESTADOS DE FEEDBACK */}
+        {carregando ? (
+          <div className="flex flex-col items-center justify-center py-12 space-y-3 text-slate-400">
+            <Loader2 className="w-8 h-8 animate-spin text-[#3B42B2]" />
+            <p className="text-xs font-semibold">Carregando compromissos...</p>
+          </div>
+        ) : erro ? (
+          <div className="p-4 bg-red-50 border border-red-200 text-red-600 rounded-2xl flex items-center gap-3 text-xs font-semibold">
+            <AlertCircle className="w-5 h-5 shrink-0" />
+            <span>{erro}</span>
+          </div>
+        ) : agendamentosFiltrados.length === 0 ? (
+          <div className="flex flex-col items-center justify-center py-12 text-slate-400 space-y-2">
+            <CalendarX className="w-10 h-10 text-slate-300" />
+            <p className="text-xs font-bold text-slate-500">Sem agendamentos nesta data</p>
+            <p className="text-[11px] text-slate-400">Tente selecionar outro dia no calendário.</p>
+          </div>
+        ) : (
+          <div className="space-y-4 pb-6">
+            {agendamentosFiltrados.map((grupo, idx) => (
+              <div key={idx} className="border border-slate-200 rounded-2xl p-4 bg-white shadow-xs space-y-3">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <div className="w-6 h-6 rounded-full bg-amber-500/10 flex items-center justify-center text-amber-500 text-xs">
+                      🦷
+                    </div>
+                    <h3 className="font-extrabold text-[#3B42B2] text-xs">
+                      {grupo.disciplina}
+                    </h3>
                   </div>
-                  <h3 className="font-extrabold text-[#3B42B2] text-xs">
-                    {grupo.disciplina}
-                  </h3>
+
+                  <span className="bg-indigo-50 text-[#3B42B2] text-[10px] font-bold px-2.5 py-1 rounded-full">
+                    {grupo.pacientes.length > 0 
+                      ? `${grupo.pacientes.length} agendamento${grupo.pacientes.length > 1 ? 's' : ''}`
+                      : 'Sem agendamentos'
+                    }
+                  </span>
                 </div>
 
-                <span className="bg-indigo-50 text-[#3B42B2] text-[10px] font-bold px-2.5 py-1 rounded-full">
-                  {grupo.pacientes.length > 0 
-                    ? `${grupo.pacientes.length} agendamento${grupo.pacientes.length > 1 ? 's' : ''}`
-                    : 'Sem agendamentos'
-                  }
-                </span>
-              </div>
+                {grupo.pacientes.length > 0 ? (
+                  <div className="divide-y divide-slate-100">
+                    {grupo.pacientes.map((paciente) => (
+                      <div key={paciente.id} className="py-2.5 first:pt-0 last:pb-0 flex items-center justify-between">
+                        <div className="flex items-center gap-3">
+                          <span className="text-[11px] font-bold text-slate-500 w-10">
+                            {paciente.hora}
+                          </span>
 
-              {/* Pacientes do Grupo */}
-              {grupo.pacientes.length > 0 ? (
-                <div className="divide-y divide-slate-100">
-                  {grupo.pacientes.map((paciente) => (
-                    <div key={paciente.id} className="py-2.5 first:pt-0 last:pb-0 flex items-center justify-between">
-                      <div className="flex items-center gap-3">
-                        <span className="text-[11px] font-bold text-slate-500 w-10">
-                          {paciente.hora}
-                        </span>
+                          <div>
+                            <h4 className="font-extrabold text-slate-800 text-xs">
+                              {paciente.nome}
+                            </h4>
+                            <p className="text-[11px] text-slate-400 font-medium">
+                              {paciente.procedimento}
+                            </p>
+                          </div>
+                        </div>
 
-                        <div>
-                          <h4 className="font-extrabold text-slate-800 text-xs">
-                            {paciente.nome}
-                          </h4>
-                          <p className="text-[11px] text-slate-400 font-medium">
-                            {paciente.procedimento}
-                          </p>
+                        <div className="relative">
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setMenuAbertoId(menuAbertoId === paciente.id ? null : paciente.id);
+                            }}
+                            className="p-1 hover:bg-slate-100 rounded-full transition cursor-pointer"
+                          >
+                            <MoreVertical className="w-5 h-5 text-[#3B42B2]" />
+                          </button>
+
+                          {menuAbertoId === paciente.id && (
+                            <div 
+                              className="absolute right-0 top-7 w-36 bg-white rounded-xl shadow-xl border border-slate-100 py-1.5 z-30"
+                              onClick={(e) => e.stopPropagation()}
+                            >
+                              <button
+                                onClick={() => {
+                                  setMenuAbertoId(null);
+                                  navigate('/app/aluno/agenda/detalhes', { state: { paciente } });
+                                }}
+                                className="w-full text-left px-3 py-1.5 text-[10px] font-bold text-slate-700 hover:bg-slate-50 transition cursor-pointer"
+                              >
+                                Ver atendimento
+                              </button>
+                              <button
+                                onClick={() => {
+                                  setMenuAbertoId(null);
+                                  navigate('/app/aluno/pacientes/detalhes', { state: { paciente } });
+                                }}
+                                className="w-full text-left px-3 py-1.5 text-[10px] font-bold text-slate-700 hover:bg-slate-50 transition cursor-pointer"
+                              >
+                                Ver paciente
+                              </button>
+                            </div>
+                          )}
                         </div>
                       </div>
-
-                      {/* Botão dos 3 pontinhos */}
-                      <div className="relative">
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            setMenuAbertoId(menuAbertoId === paciente.id ? null : paciente.id);
-                          }}
-                          className="p-1 hover:bg-slate-100 rounded-full transition cursor-pointer"
-                        >
-                          <MoreVertical className="w-5 h-5 text-[#3B42B2]" />
-                        </button>
-
-                        {/* MENU POPUP */}
-                        {menuAbertoId === paciente.id && (
-                          <div 
-                            className="absolute right-0 top-7 w-36 bg-white rounded-xl shadow-xl border border-slate-100 py-1.5 z-30"
-                            onClick={(e) => e.stopPropagation()}
-                          >
-                            <button
-                              onClick={() => {
-                                setMenuAbertoId(null);
-                                navigate('/app/aluno/agenda/detalhes', { state: { paciente } });
-                              }}
-                              className="w-full text-left px-3 py-1.5 text-[10px] font-bold text-slate-700 hover:bg-slate-50 transition"
-                            >
-                              Ver atendimento
-                            </button>
-                            <button
-                              onClick={() => {
-                                setMenuAbertoId(null);
-                                navigate('/app/aluno/pacientes/detalhes', { state: { paciente } });
-                              }}
-                              className="w-full text-left px-3 py-1.5 text-[10px] font-bold text-slate-700 hover:bg-slate-50 transition"
-                            >
-                              Ver paciente
-                            </button>
-                          </div>
-                        )}
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              ) : (
-                <p className="text-[11px] text-slate-400 font-medium py-2 text-center">
-                  Não há pacientes agendados para essa data.
-                </p>
-              )}
-            </div>
-          ))}
-        </div>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="text-[11px] text-slate-400 font-medium py-2 text-center">
+                    Não há pacientes agendados para essa data.
+                  </p>
+                )}
+              </div>
+            ))}
+          </div>
+        )}
 
         {/* 3. MODAL POPUP SELEÇÃO DE DISCIPLINAS */}
         {modalDisciplinasAberto && (
@@ -308,7 +360,7 @@ export default function AgendaAluno() {
             >
               <div className="flex items-center justify-between pb-2 border-b border-slate-100">
                 <span className="font-extrabold text-[#3B42B2] text-sm">
-                  Todas as disciplinas
+                  Selecione a disciplina
                 </span>
                 <ChevronUp className="w-5 h-5 text-amber-500" />
               </div>

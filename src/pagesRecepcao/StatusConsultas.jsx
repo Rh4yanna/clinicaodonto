@@ -1,6 +1,7 @@
-import { useState } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { ArrowLeft, Bell, CheckCircle, AlertTriangle, ChevronRight } from 'lucide-react';
+import { ArrowLeft, Bell, CheckCircle, AlertTriangle, ChevronRight, Loader2, AlertCircle } from 'lucide-react';
+import api from '../Services/api'; // Ajustado caminho e maiúscula para Services
 
 export default function StatusConsultas() {
   const navigate = useNavigate();
@@ -10,8 +11,43 @@ export default function StatusConsultas() {
   const abaInicial = location.state?.abaInicial || 'confirmadas';
   const [abaAtiva, setAbaAtiva] = useState(abaInicial); // 'confirmadas', 'pendentes', 'faltas'
 
+  const [consultas, setConsultas] = useState([]);
+  const [carregando, setCarregando] = useState(true);
+  const [erro, setErro] = useState('');
+
+  // Busca agendamentos filtrados pela aba na API
+  const carregarConsultas = useCallback(async () => {
+    try {
+      setCarregando(true);
+      setErro('');
+
+      // Mapeamento das abas para o status do backend
+      const mapaStatus = {
+        confirmadas: 'CONFIRMADO',
+        pendentes: 'PENDENTE',
+        faltas: 'FALTA' // ou 'NAO_COMPARECEU' / 'CANCELADO' conforme convenção da API
+      };
+
+      const statusParam = mapaStatus[abaAtiva] || 'CONFIRMADO';
+      const resposta = await api.get('/agendamentos', {
+        params: { status: statusParam }
+      });
+
+      setConsultas(resposta.data || []);
+    } catch (err) {
+      console.error('Erro ao buscar consultas por status:', err);
+      setErro('Não foi possível carregar as consultas.');
+    } finally {
+      setCarregando(false);
+    }
+  }, [abaAtiva]);
+
+  useEffect(() => {
+    carregarConsultas();
+  }, [carregarConsultas]);
+
   return (
-    <div className="flex flex-col w-full min-h-full">
+    <div className="flex flex-col w-full min-h-full font-sans">
       
       {/* HEADER WEB COM BOTÃO VOLTAR */}
       <header className="bg-white border-b border-gray-200 h-20 px-8 flex items-center justify-between select-none shrink-0">
@@ -86,7 +122,9 @@ export default function StatusConsultas() {
             </div>
             <div>
               <h4 className="text-xs font-black">Aguardando confirmação</h4>
-              <p className="text-[11px] font-medium text-purple-700 mt-0.5">Entre em contato com os pacientes para confirmar os atendimentos agendados.</p>
+              <p className="text-[11px] font-medium text-purple-700 mt-0.5">
+                Entre em contato com os pacientes para confirmar os atendimentos agendados.
+              </p>
             </div>
           </div>
         )}
@@ -102,36 +140,47 @@ export default function StatusConsultas() {
           </div>
         )}
 
-        {/* RENDERIZAÇÃO DA LISTA BASEADA NA ABA */}
-        <div className="bg-white border border-gray-200 rounded-2xl overflow-hidden shadow-sm divide-y divide-gray-100">
-          {abaAtiva === 'confirmadas' && (
-            [
-              { data: "20/06/2026", hora: "09:30", nome: "Nome do paciente", proc: "Clareamento Dental", esp: "Dentística" },
-              { data: "20/06/2026", hora: "11:00", nome: "Nome do paciente", proc: "Clareamento Dental", esp: "Dentística" },
-              { data: "20/06/2026", hora: "08:30", nome: "Nome do paciente", proc: "Clareamento Dental", esp: "Dentística" },
-              { data: "20/06/2026", hora: "08:30", nome: "Nome do paciente", proc: "Clareamento Dental", esp: "Dentística" }
-            ].map((p, idx) => <ItemLista key={idx} paciente={p} />)
-          )}
-
-          {abaAtiva === 'pendentes' && (
-            [
-              { data: "20/06/2026", hora: "08:30", nome: "Rhaya Borges", proc: "Clareamento Dental", esp: "Dentística" },
-              { data: "20/06/2026", hora: "08:30", nome: "Rhaya Borges", proc: "Clareamento Dental", esp: "Dentística" },
-              { data: "20/06/2026", hora: "08:30", nome: "Rhaya Borges", proc: "Clareamento Dental", esp: "Dentística" }
-            ].map((p, idx) => <ItemLista key={idx} paciente={p} />)
-          )}
-
-          {abaAtiva === 'faltas' && (
-            [
-              { data: "20/06/2026", hora: "09:30", nome: "Nome do paciente", proc: "Clareamento Dental", esp: "Dentística" },
-              { data: "20/06/2026", hora: "11:00", nome: "Nome do paciente", proc: "Clareamento Dental", esp: "Dentística" }
-            ].map((p, idx) => <ItemLista key={idx} paciente={p} />)
-          )}
-        </div>
-
-        {abaAtiva === 'confirmadas' && (
-          <div className="text-center pt-2">
-            <button className="text-[#3B44A8] text-xs font-bold hover:underline">Ver mais</button>
+        {/* CARREGAMENTO E ERRO */}
+        {carregando ? (
+          <div className="bg-white border border-gray-200 rounded-2xl p-12 flex flex-col items-center justify-center text-center shadow-sm text-gray-500 gap-3 min-h-[300px]">
+            <Loader2 size={32} className="animate-spin text-[#3B44A8]" />
+            <p className="text-sm font-medium">Carregando consultas...</p>
+          </div>
+        ) : erro ? (
+          <div className="bg-white border border-gray-200 rounded-2xl p-12 flex flex-col items-center justify-center text-center shadow-sm text-gray-500 gap-3 min-h-[300px]">
+            <AlertCircle size={36} className="text-red-500" />
+            <p className="text-sm font-bold text-gray-800">{erro}</p>
+            <button 
+              onClick={carregarConsultas}
+              className="text-xs text-[#3B44A8] font-bold underline mt-1"
+            >
+              Tentar novamente
+            </button>
+          </div>
+        ) : (
+          /* RENDERIZAÇÃO DA LISTA DE CONSULTAS */
+          <div className="bg-white border border-gray-200 rounded-2xl overflow-hidden shadow-sm divide-y divide-gray-100">
+            {consultas.length === 0 ? (
+              <div className="p-8 text-center text-xs text-gray-400 font-medium">
+                Nenhuma consulta encontrada nesta categoria.
+              </div>
+            ) : (
+              consultas.map((item, idx) => (
+                <ItemLista 
+                  key={item.id || item._id || idx} 
+                  paciente={{
+                    id: item.id || item._id,
+                    data: item.data || '---',
+                    hora: item.horario || item.hora || '--:--',
+                    nome: item.pacienteNome || item.paciente?.nome || 'Paciente sem nome',
+                    proc: item.procedimento || item.servico || 'Consulta Geral',
+                    esp: item.especialidade || item.categoria || 'Odontologia',
+                    raw: item
+                  }} 
+                  onSelect={(agendamento) => navigate('/app/recepcao/agenda', { state: { agendamento } })}
+                />
+              ))
+            )}
           </div>
         )}
 
@@ -140,10 +189,13 @@ export default function StatusConsultas() {
   );
 }
 
-// Subcomponente interno para os itens da lista ficarem padronizados
-function ItemLista({ paciente }) {
+// Subcomponente interno para os itens da lista
+function ItemLista({ paciente, onSelect }) {
   return (
-    <div className="p-5 flex items-center justify-between hover:bg-gray-50/50 transition cursor-pointer group">
+    <div 
+      onClick={() => onSelect(paciente.raw)}
+      className="p-5 flex items-center justify-between hover:bg-gray-50/50 transition cursor-pointer group"
+    >
       <div className="flex items-center flex-1 min-w-0">
         {/* Data e Hora agrupados */}
         <div className="text-gray-500 font-bold text-[11px] w-20 text-center bg-gray-50 py-1 rounded-lg border border-gray-200 space-y-0.5 select-none">

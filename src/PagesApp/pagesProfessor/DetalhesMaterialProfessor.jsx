@@ -1,55 +1,84 @@
-import { useLocation, useNavigate } from 'react-router-dom';
-import { ArrowLeft, AlertTriangle, ArrowUpCircle, ArrowDownCircle } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { useLocation, useNavigate, useParams } from 'react-router-dom';
+import { ArrowLeft, AlertTriangle, ArrowUpCircle, ArrowDownCircle, Loader2 } from 'lucide-react';
+
+const STORAGE_KEYS = {
+  MATERIAIS: '@app_clinica:materiais',
+};
 
 export default function DetalhesMaterialProfessor() {
   const navigate = useNavigate();
   const location = useLocation();
+  const { id: materialId } = useParams();
 
-  // Recupera o material vindo pelo clique ou define o padrão como fallback
-  const material = location.state?.material || {
-    nome: "Máscara Descartável Tripla",
-    codigo: "125794216646",
-    embalagem: "(Cx c/ 50 Un)",
-    tipo: "Descartável",
-    categoria: "Luvas",
-    estoqueAtual: 1,
-    estoqueMinimo: 10,
-    estoqueIdeal: 20,
-    emFalta: 9,
-    fabricante: "Luvax Luvas",
-    lote: "2026-04-15",
-    anvisa: "103478465126",
-    dataEntrada: "15/04/2026",
-    validade: "15/04/2030",
-    unidadeMedida: "Caixa c/ 50 pares"
-  };
+  const [loading, setLoading] = useState(true);
+  const [material, setMaterial] = useState(null);
+  const [movimentacoes, setMovimentacoes] = useState([]);
 
-  // Histórico de movimentações mockado
-  const movimentacoes = [
-    {
-      tipo: "Saída",
-      descricao: "Uso em procedimento - Consultório 02",
-      data: "18/05/2026",
-      qtd: "- 6 Un",
-      isEntrada: false
-    },
-    {
-      tipo: "Saída",
-      descricao: "Uso em sala de aula - Sala 02",
-      data: "14/05/2026",
-      qtd: "- 24 Un",
-      isEntrada: false
-    },
-    {
-      tipo: "Entrada",
-      descricao: "Compra - NF 12456",
-      data: "13/05/2026",
-      qtd: "+ 4 Un",
-      isEntrada: true
+  useEffect(() => {
+    async function carregarDetalhesMaterial() {
+      try {
+        setLoading(true);
+
+        // 1. Tenta pegar o material enviado no state da navegação
+        const materialState = location.state?.material;
+
+        if (materialState) {
+          setMaterial(materialState);
+          setMovimentacoes(materialState.movimentacoes || mockMovimentacoes);
+          return;
+        }
+
+        // 2. Tenta buscar no banco de dados local (localStorage) ou API backend
+        // Substitua esta lógica por uma chamada de API `fetch('/api/materiais/' + materialId)` quando o backend estiver integrado.
+        const materiaisSalvos = JSON.parse(localStorage.getItem(STORAGE_KEYS.MATERIAIS) || '[]');
+        const materialEncontrado = materiaisSalvos.find(item => String(item.id || item.codigo) === String(materialId));
+
+        if (materialEncontrado) {
+          setMaterial(materialEncontrado);
+          setMovimentacoes(materialEncontrado.movimentacoes || mockMovimentacoes);
+        } else {
+          // Fallback padrão se não encontrar no banco/storage
+          setMaterial(fallbackMaterial);
+          setMovimentacoes(mockMovimentacoes);
+        }
+      } catch (error) {
+        console.error("Erro ao carregar os detalhes do material:", error);
+        setMaterial(fallbackMaterial);
+        setMovimentacoes(mockMovimentacoes);
+      } finally {
+        setLoading(false);
+      }
     }
-  ];
 
-  const isCritico = (material.estoqueAtual || material.qtd) < (material.estoqueMinimo || 5);
+    carregarDetalhesMaterial();
+  }, [materialId, location.state]);
+
+  if (loading) {
+    return (
+      <div className="flex-1 flex items-center justify-center min-h-screen bg-white text-[#3B44A8]">
+        <Loader2 size={32} className="animate-spin" />
+      </div>
+    );
+  }
+
+  if (!material) {
+    return (
+      <div className="flex-1 flex flex-col items-center justify-center min-h-screen bg-white p-6 text-center">
+        <p className="text-gray-600 font-bold mb-4">Material não encontrado.</p>
+        <button 
+          onClick={() => navigate(-1)} 
+          className="bg-[#3B44A8] text-white px-4 py-2 rounded-xl text-sm font-semibold"
+        >
+          Voltar
+        </button>
+      </div>
+    );
+  }
+
+  const estoqueAtual = Number(material.estoqueAtual ?? material.qtd ?? 0);
+  const estoqueMinimo = Number(material.estoqueMinimo ?? 10);
+  const isCritico = estoqueAtual < estoqueMinimo;
 
   return (
     <div className="flex-1 flex flex-col min-h-0 bg-white">
@@ -60,6 +89,7 @@ export default function DetalhesMaterialProfessor() {
           type="button"
           onClick={() => navigate(-1)} 
           className="p-1 hover:bg-white/10 rounded-lg transition active:scale-95"
+          aria-label="Voltar"
         >
           <ArrowLeft size={24} />
         </button>
@@ -86,7 +116,7 @@ export default function DetalhesMaterialProfessor() {
           <div className="flex gap-4">
             {/* Imagem */}
             <img 
-              src={material.imagem || "https://placehold.co/100x100/e2e8f0/475569?text=Mascara"} 
+              src={material.imagem || "https://placehold.co/100x100/e2e8f0/475569?text=Material"} 
               alt={material.nome}
               className="w-16 h-16 rounded-xl object-cover border border-gray-150 bg-gray-50 shrink-0"
             />
@@ -109,12 +139,14 @@ export default function DetalhesMaterialProfessor() {
           <div className="grid grid-cols-4 gap-1 text-center divide-x divide-gray-100 select-none">
             <div>
               <span className="block text-[9px] font-bold text-gray-500 leading-none">Estoque atual</span>
-              <span className="block text-base font-black text-[#D32F2F] mt-1.5">{material.estoqueAtual || material.qtd || 1}</span>
+              <span className={`block text-base font-black mt-1.5 ${isCritico ? 'text-[#D32F2F]' : 'text-[#3B44A8]'}`}>
+                {estoqueAtual}
+              </span>
               <span className="block text-[8px] font-semibold text-gray-400 mt-0.5">unidade</span>
             </div>
             <div>
               <span className="block text-[9px] font-bold text-gray-500 leading-none">Estoque mínimo</span>
-              <span className="block text-base font-black text-[#3B44A8] mt-1.5">{material.estoqueMinimo || 10}</span>
+              <span className="block text-base font-black text-[#3B44A8] mt-1.5">{estoqueMinimo}</span>
               <span className="block text-[8px] font-semibold text-gray-400 mt-0.5">unidades</span>
             </div>
             <div>
@@ -124,7 +156,7 @@ export default function DetalhesMaterialProfessor() {
             </div>
             <div>
               <span className="block text-[9px] font-bold text-gray-500 leading-none">Em falta</span>
-              <span className="block text-base font-black text-[#3B44A8] mt-1.5">{material.emFalta || 9}</span>
+              <span className="block text-base font-black text-[#3B44A8] mt-1.5">{material.emFalta || Math.max(0, estoqueMinimo - estoqueAtual)}</span>
               <span className="block text-[8px] font-semibold text-gray-400 mt-0.5">unidades</span>
             </div>
           </div>
@@ -141,19 +173,19 @@ export default function DetalhesMaterialProfessor() {
             </div>
             <div>
               <span className="block text-gray-900 font-bold mb-0.5">Lote</span>
-              {material.lote}
+              {material.lote || "Não informado"}
             </div>
             <div>
               <span className="block text-gray-900 font-bold mb-0.5">Registro ANVISA</span>
-              {material.anvisa || "103478465126"}
+              {material.anvisa || "Não informado"}
             </div>
             <div>
               <span className="block text-gray-900 font-bold mb-0.5">Data de entrada</span>
-              {material.dataEntrada || "15/04/2026"}
+              {material.dataEntrada || "Não informada"}
             </div>
             <div>
               <span className="block text-gray-900 font-bold mb-0.5">Validade</span>
-              {material.val || material.validade}
+              {material.validade || material.val || "Não informada"}
             </div>
             <div>
               <span className="block text-gray-900 font-bold mb-0.5">Unidade de medida</span>
@@ -170,30 +202,34 @@ export default function DetalhesMaterialProfessor() {
           </div>
 
           <div className="bg-white border border-gray-150 rounded-2xl overflow-hidden shadow-sm divide-y divide-gray-150">
-            {movimentacoes.map((mov, index) => (
-              <div key={index} className="p-3 flex items-center justify-between text-[10px]">
-                <div className="flex items-center gap-3 min-w-0">
-                  {mov.isEntrada ? (
-                    <ArrowUpCircle className="text-green-500 shrink-0" size={18} />
-                  ) : (
-                    <ArrowDownCircle className="text-red-400 shrink-0" size={18} />
-                  )}
-                  <div className="min-w-0 font-semibold">
-                    <p className={`font-bold ${mov.isEntrada ? 'text-green-600' : 'text-red-500'}`}>
-                      {mov.tipo}
+            {movimentacoes.length > 0 ? (
+              movimentacoes.map((mov, index) => (
+                <div key={index} className="p-3 flex items-center justify-between text-[10px]">
+                  <div className="flex items-center gap-3 min-w-0">
+                    {mov.isEntrada ? (
+                      <ArrowUpCircle className="text-green-500 shrink-0" size={18} />
+                    ) : (
+                      <ArrowDownCircle className="text-red-400 shrink-0" size={18} />
+                    )}
+                    <div className="min-w-0 font-semibold">
+                      <p className={`font-bold ${mov.isEntrada ? 'text-green-600' : 'text-red-500'}`}>
+                        {mov.tipo}
+                      </p>
+                      <p className="text-gray-400 truncate text-[9px] font-medium">{mov.descricao}</p>
+                    </div>
+                  </div>
+                  
+                  <div className="text-right shrink-0 font-medium text-gray-400 text-[9px]">
+                    <p>{mov.data}</p>
+                    <p className={`font-bold mt-0.5 ${mov.isEntrada ? 'text-green-600' : 'text-red-400'}`}>
+                      {mov.qtd}
                     </p>
-                    <p className="text-gray-400 truncate text-[9px] font-medium">{mov.descricao}</p>
                   </div>
                 </div>
-                
-                <div className="text-right shrink-0 font-medium text-gray-400 text-[9px]">
-                  <p>{mov.data}</p>
-                  <p className={`font-bold mt-0.5 ${mov.isEntrada ? 'text-green-600' : 'text-red-400'}`}>
-                    {mov.qtd}
-                  </p>
-                </div>
-              </div>
-            ))}
+              ))
+            ) : (
+              <p className="p-4 text-center text-gray-400 text-xs">Nenhuma movimentação registrada.</p>
+            )}
           </div>
         </div>
 
@@ -201,3 +237,46 @@ export default function DetalhesMaterialProfessor() {
     </div>
   );
 }
+
+// Fallbacks de dados caso não haja dados dinâmicos salvos
+const fallbackMaterial = {
+  nome: "Máscara Descartável Tripla",
+  codigo: "125794216646",
+  embalagem: "(Cx c/ 50 Un)",
+  tipo: "Descartável",
+  categoria: "Luvas",
+  estoqueAtual: 1,
+  estoqueMinimo: 10,
+  estoqueIdeal: 20,
+  emFalta: 9,
+  fabricante: "Luvax Luvas",
+  lote: "2026-04-15",
+  anvisa: "103478465126",
+  dataEntrada: "15/04/2026",
+  validade: "15/04/2030",
+  unidadeMedida: "Caixa c/ 50 pares"
+};
+
+const mockMovimentacoes = [
+  {
+    tipo: "Saída",
+    descricao: "Uso em procedimento - Consultório 02",
+    data: "18/05/2026",
+    qtd: "- 6 Un",
+    isEntrada: false
+  },
+  {
+    tipo: "Saída",
+    descricao: "Uso em sala de aula - Sala 02",
+    data: "14/05/2026",
+    qtd: "- 24 Un",
+    isEntrada: false
+  },
+  {
+    tipo: "Entrada",
+    descricao: "Compra - NF 12456",
+    data: "13/05/2026",
+    qtd: "+ 4 Un",
+    isEntrada: true
+  }
+];

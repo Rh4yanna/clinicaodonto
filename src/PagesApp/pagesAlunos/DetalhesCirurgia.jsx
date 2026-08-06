@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { 
   ArrowLeft, 
   User, 
@@ -13,6 +13,18 @@ import {
 
 export default function DetalhesCirurgia() {
   const navigate = useNavigate();
+  const location = useLocation();
+
+  // Dados com fallback para testes ou navegação direta
+  const cirurgia = location.state?.cirurgia || {
+    paciente: "Rhaya Borges",
+    cpf: "012.123.456-89",
+    procedimento: "Exodontia - 36",
+    data: "26/05/2026",
+    horario: "08:30",
+    local: "Centro Cirúrgico",
+    status: "Agendada"
+  };
 
   // Estado para controlar as quantidades interativas dos materiais médicos
   const [materiais, setMateriais] = useState([
@@ -37,73 +49,74 @@ export default function DetalhesCirurgia() {
   };
 
   return (
-    <div className="flex-1 flex flex-col min-h-0 bg-[#3B44A8]">
+    <div className="flex-1 flex flex-col min-h-0 bg-[#3B44A8] font-sans">
       
       {/* TOPO FIXO - Detalhes da Cirurgia */}
-      <div className="pt-10 pb-6 px-6 text-white flex items-center justify-between shrink-0">
+      <div className="pt-12 pb-6 px-6 text-white flex items-center justify-between shrink-0 select-none">
         <button 
           onClick={() => navigate('/app/aluno/cirurgias')}
-          className="p-1 hover:bg-white/10 rounded-lg transition active:scale-95"
+          className="p-1 hover:bg-white/10 rounded-lg transition active:scale-95 cursor-pointer"
+          aria-label="Voltar para a lista de cirurgias"
         >
           <ArrowLeft size={22} />
         </button>
-        <h1 className="text-lg font-bold tracking-wide flex-1 text-center mr-6">Detalhes da Cirurgia</h1>
+        <h1 className="text-base font-bold tracking-wide flex-1 text-center mr-6">Detalhes da Cirurgia</h1>
       </div>
 
-      {/* PAINEL INFERIOR ARREDONDADO (Design do Mockup) */}
-      <div className="flex-1 bg-white rounded-t-[32px] overflow-y-auto px-5 py-6 space-y-6 shadow-inner">
+      {/* PAINEL INFERIOR ARREDONDADO */}
+      <div className="flex-1 bg-white rounded-t-[32px] overflow-y-auto px-5 py-6 space-y-6 shadow-inner pb-24">
         
         {/* 1. CARD INFORMATIVO PRINCIPAL */}
-        <div className="bg-white border border-gray-150 rounded-2xl p-4 shadow-md space-y-4">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <div className="w-12 h-12 bg-gray-100 rounded-full border border-gray-200 flex items-center justify-center shrink-0">
-                <User className="text-gray-500" size={24} />
+        <div className="bg-white border border-gray-200/80 rounded-2xl p-4 shadow-xs space-y-4">
+          <div className="flex items-center justify-between gap-2">
+            <div className="flex items-center gap-3 min-w-0">
+              <div className="w-12 h-12 bg-gray-50 rounded-full border border-gray-200 flex items-center justify-center shrink-0">
+                <User className="text-gray-400" size={22} />
               </div>
-              <div>
-                <h2 className="font-extrabold text-gray-950 text-sm leading-snug">Rhaya Borges</h2>
-                <p className="text-gray-400 text-[10px] font-semibold">012.123.456-89</p>
+              <div className="min-w-0">
+                <h2 className="font-bold text-gray-950 text-sm leading-snug truncate">{cirurgia.paciente}</h2>
+                <p className="text-gray-400 text-[10px] font-semibold">{cirurgia.cpf}</p>
               </div>
             </div>
-            <span className="bg-[#DEF5E9] text-[#52C41A] text-[9px] font-bold px-3 py-1 rounded-full whitespace-nowrap">
-              Agendada
+            <span className="bg-[#DEF5E9] text-[#0f5132] text-[9px] font-black px-3 py-1 rounded-full whitespace-nowrap uppercase">
+              {cirurgia.status}
             </span>
           </div>
 
-          <div className="grid grid-cols-3 gap-2 pt-2 border-t border-gray-100 text-xs">
+          <div className="grid grid-cols-3 gap-2 pt-3 border-t border-gray-100 text-xs">
             <div>
-              <span className="block text-gray-950 font-bold text-[10px] uppercase tracking-wider">Procedimento</span>
-              <span className="text-gray-500 font-medium text-[11px] leading-tight">Exodontia - 36</span>
+              <span className="block text-gray-950 font-black text-[10px] uppercase tracking-wider">Procedimento</span>
+              <span className="text-gray-500 font-medium text-[11px] leading-tight block mt-0.5">{cirurgia.procedimento}</span>
             </div>
             <div>
-              <span className="block text-gray-950 font-bold text-[10px] uppercase tracking-wider">Data</span>
-              <span className="text-gray-500 font-medium text-[11px] leading-tight">26/05/2026</span>
+              <span className="block text-gray-950 font-black text-[10px] uppercase tracking-wider">Data</span>
+              <span className="text-gray-500 font-medium text-[11px] leading-tight block mt-0.5">{cirurgia.data}</span>
             </div>
             <div>
-              <span className="block text-gray-950 font-bold text-[10px] uppercase tracking-wider">Horário</span>
-              <span className="text-gray-500 font-medium text-[11px] leading-tight">08:30</span>
+              <span className="block text-gray-950 font-black text-[10px] uppercase tracking-wider">Horário</span>
+              <span className="text-gray-500 font-medium text-[11px] leading-tight block mt-0.5">{cirurgia.horario}</span>
             </div>
           </div>
 
-          <div className="pt-2">
-            <span className="block text-gray-950 font-bold text-[10px] uppercase tracking-wider">Local</span>
-            <span className="text-gray-500 font-medium text-[11px]">Centro Cirúrgico</span>
+          <div className="pt-1">
+            <span className="block text-gray-950 font-black text-[10px] uppercase tracking-wider">Local</span>
+            <span className="text-gray-500 font-medium text-[11px] block mt-0.5">{cirurgia.local}</span>
           </div>
         </div>
 
         {/* 2. EQUIPE RESPONSÁVEL */}
-        <div className="space-y-3">
-          <h3 className="text-[#3B44A8] font-extrabold text-sm">Equipe responsável</h3>
+        <div className="space-y-2.5">
+          <h3 className="text-[#3B44A8] font-black text-xs px-1">Equipe responsável</h3>
           
-          <div className="bg-white border border-gray-200 rounded-2xl overflow-hidden shadow-sm divide-y divide-gray-100">
-            {/* Membro 1 */}
+          <div className="bg-white border border-gray-200 rounded-2xl overflow-hidden shadow-xs divide-y divide-gray-100">
+            {/* Responsável */}
             <div className="p-3.5 flex items-center justify-between">
               <div className="flex items-center gap-3">
-                <div className="w-9 h-9 bg-gray-50 rounded-full border border-gray-150 flex items-center justify-center">
+                <div className="w-9 h-9 bg-gray-50 rounded-full border border-gray-200 flex items-center justify-center shrink-0">
                   <User size={18} className="text-gray-400" />
                 </div>
                 <div>
-                  <h4 className="font-bold text-gray-900 text-xs">João Silva</h4>
+                  <h4 className="font-bold text-gray-950 text-xs">João Silva</h4>
                   <p className="text-gray-400 text-[10px] font-medium leading-none mt-0.5">Aluno</p>
                 </div>
               </div>
@@ -112,50 +125,50 @@ export default function DetalhesCirurgia() {
               </span>
             </div>
 
-            {/* Membro 2 */}
+            {/* Auxiliar 1 */}
             <div className="p-3.5 flex items-center justify-between">
               <div className="flex items-center gap-3">
-                <div className="w-9 h-9 bg-gray-50 rounded-full border border-gray-150 flex items-center justify-center">
+                <div className="w-9 h-9 bg-gray-50 rounded-full border border-gray-200 flex items-center justify-center shrink-0">
                   <User size={18} className="text-gray-400" />
                 </div>
                 <div>
-                  <h4 className="font-bold text-gray-900 text-xs">Matheus Mota</h4>
+                  <h4 className="font-bold text-gray-950 text-xs">Matheus Mota</h4>
                   <p className="text-gray-400 text-[10px] font-medium leading-none mt-0.5">Aluno</p>
                 </div>
               </div>
-              <span className="bg-[#FFEED2] text-[#F9A814] text-[9px] font-bold px-2.5 py-1 rounded-full">
+              <span className="bg-[#FFEED2] text-[#B45309] text-[9px] font-bold px-2.5 py-1 rounded-full">
                 Auxiliar
               </span>
             </div>
 
-            {/* Membro 3 */}
+            {/* Auxiliar 2 */}
             <div className="p-3.5 flex items-center justify-between">
               <div className="flex items-center gap-3">
-                <div className="w-9 h-9 bg-gray-50 rounded-full border border-gray-150 flex items-center justify-center">
+                <div className="w-9 h-9 bg-gray-50 rounded-full border border-gray-200 flex items-center justify-center shrink-0">
                   <User size={18} className="text-gray-400" />
                 </div>
                 <div>
-                  <h4 className="font-bold text-gray-900 text-xs">Alana Lopes</h4>
+                  <h4 className="font-bold text-gray-950 text-xs">Alana Lopes</h4>
                   <p className="text-gray-400 text-[10px] font-medium leading-none mt-0.5">Aluno</p>
                 </div>
               </div>
-              <span className="bg-[#FFEED2] text-[#F9A814] text-[9px] font-bold px-2.5 py-1 rounded-full">
+              <span className="bg-[#FFEED2] text-[#B45309] text-[9px] font-bold px-2.5 py-1 rounded-full">
                 Auxiliar
               </span>
             </div>
 
-            {/* Membro 4 */}
+            {/* Supervisor */}
             <div className="p-3.5 flex items-center justify-between">
               <div className="flex items-center gap-3">
-                <div className="w-9 h-9 bg-gray-50 rounded-full border border-gray-150 flex items-center justify-center">
+                <div className="w-9 h-9 bg-gray-50 rounded-full border border-gray-200 flex items-center justify-center shrink-0">
                   <User size={18} className="text-gray-400" />
                 </div>
                 <div>
-                  <h4 className="font-bold text-gray-900 text-xs">Dr. Carlos Eduardo</h4>
+                  <h4 className="font-bold text-gray-950 text-xs">Dr. Carlos Eduardo</h4>
                   <p className="text-gray-400 text-[10px] font-medium leading-none mt-0.5">Professor</p>
                 </div>
               </div>
-              <span className="bg-[#DEF5E9] text-[#52C41A] text-[9px] font-bold px-2.5 py-1 rounded-full">
+              <span className="bg-[#DEF5E9] text-[#0f5132] text-[9px] font-bold px-2.5 py-1 rounded-full">
                 Supervisor
               </span>
             </div>
@@ -163,13 +176,15 @@ export default function DetalhesCirurgia() {
         </div>
 
         {/* 3. MATERIAIS PREVISTOS */}
-        <div className="space-y-3">
-          <div className="flex items-center justify-between">
-            <h3 className="text-[#3B44A8] font-extrabold text-sm">Materiais previstos</h3>
-            <button className="text-[#3B44A8] text-xs font-bold hover:underline">Adicionar materiais</button>
+        <div className="space-y-2.5">
+          <div className="flex items-center justify-between px-1">
+            <h3 className="text-[#3B44A8] font-black text-xs">Materiais previstos</h3>
+            <button className="text-[#3B44A8] text-[10px] font-bold hover:underline cursor-pointer">
+              + Adicionar materiais
+            </button>
           </div>
 
-          <div className="bg-white border border-gray-200 rounded-2xl overflow-hidden shadow-sm divide-y divide-gray-100">
+          <div className="bg-white border border-gray-200 rounded-2xl overflow-hidden shadow-xs divide-y divide-gray-100">
             {materiais.map((mat) => {
               const IconComp = mat.icon;
               return (
@@ -180,24 +195,28 @@ export default function DetalhesCirurgia() {
                     </div>
                     <div className="min-w-0">
                       <h4 className="font-bold text-gray-950 text-xs truncate leading-tight">{mat.nome}</h4>
-                      <p className="text-gray-400 text-[9px] font-semibold">{mat.sub}</p>
+                      <p className="text-gray-400 text-[9px] font-semibold mt-0.5">{mat.sub}</p>
                     </div>
                   </div>
 
-                  {/* Botões do Contador */}
-                  <div className="flex items-center gap-3 border border-gray-200 rounded-lg p-1 bg-gray-50">
+                  {/* Contador de Quantidade */}
+                  <div className="flex items-center border border-gray-200 rounded-xl bg-gray-50 overflow-hidden shrink-0 shadow-2xs">
                     <button 
                       onClick={() => alterarQuantidade(mat.id, -1)}
-                      className="p-1 text-gray-500 hover:text-[#3B44A8] transition active:scale-90"
+                      className="p-1.5 px-2 text-gray-500 hover:text-[#3B44A8] hover:bg-gray-100 transition active:scale-95 cursor-pointer"
+                      aria-label={`Diminuir quantidade de ${mat.nome}`}
                     >
-                      <Minus size={12} className="stroke-[3]" />
+                      <Minus size={11} className="stroke-[3]" />
                     </button>
-                    <span className="text-gray-950 font-bold text-xs w-4 text-center select-none">{mat.qtd}</span>
+                    <span className="text-gray-950 font-bold text-xs min-w-[20px] text-center select-none px-1">
+                      {mat.qtd}
+                    </span>
                     <button 
                       onClick={() => alterarQuantidade(mat.id, 1)}
-                      className="p-1 text-gray-500 hover:text-[#3B44A8] transition active:scale-90"
+                      className="p-1.5 px-2 text-gray-500 hover:text-[#3B44A8] hover:bg-gray-100 transition active:scale-95 cursor-pointer"
+                      aria-label={`Aumentar quantidade de ${mat.nome}`}
                     >
-                      <Plus size={12} className="stroke-[3]" />
+                      <Plus size={11} className="stroke-[3]" />
                     </button>
                   </div>
                 </div>
@@ -207,6 +226,23 @@ export default function DetalhesCirurgia() {
         </div>
 
       </div>
+
+      {/* RODAPÉ FIXO DE AÇÕES */}
+      <div className="p-4 border-t border-gray-100 bg-white flex gap-3 shrink-0 shadow-lg relative z-10">
+        <button 
+          onClick={() => navigate('/app/aluno/cirurgias')}
+          className="flex-1 py-3 border border-gray-200 text-gray-700 rounded-xl font-bold text-xs hover:bg-gray-50 transition active:scale-[0.98] cursor-pointer"
+        >
+          Voltar
+        </button>
+        <button 
+          onClick={() => alert('Lista de materiais cirúrgicos salva!')}
+          className="flex-1 py-3 bg-[#3B44A8] text-white rounded-xl font-bold text-xs hover:bg-[#30388d] transition active:scale-[0.98] shadow-sm cursor-pointer"
+        >
+          Salvar Materiais
+        </button>
+      </div>
+
     </div>
   );
 }

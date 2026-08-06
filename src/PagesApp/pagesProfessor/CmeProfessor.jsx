@@ -1,14 +1,30 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   ArrowLeft,
   QrCode,
   Barcode,
-  ChevronRight
+  ChevronRight,
+  PackageCheck
 } from 'lucide-react';
+
+const STORAGE_KEY_MATERIAIS = '@app_clinica:materiais_estoque';
 
 export default function CmeProfessor() {
   const navigate = useNavigate();
+  const [materiais, setMateriais] = useState([]);
+
+  // Carrega os materiais cadastrados no localStorage
+  useEffect(() => {
+    const dadosSalvos = localStorage.getItem(STORAGE_KEY_MATERIAIS);
+    if (dadosSalvos) {
+      try {
+        setMateriais(JSON.parse(dadosSalvos));
+      } catch (error) {
+        console.error('Erro ao ler materiais do localStorage:', error);
+      }
+    }
+  }, []);
 
   return (
     <div className="w-full h-full bg-[#3B42B2] text-white flex flex-col font-sans m-0 p-0 overflow-hidden relative">
@@ -26,7 +42,7 @@ export default function CmeProfessor() {
           Central de Esterilização
         </h1>
 
-        <div className="w-9" /> {/* Espaçador para centralizar o título */}
+        <div className="w-9" />
       </div>
 
       {/* CARD PRINCIPAL BRANCO COM SCROLL */}
@@ -40,12 +56,14 @@ export default function CmeProfessor() {
             className="border border-slate-100 rounded-2xl p-3 bg-white shadow-xs text-center flex flex-col justify-between cursor-pointer hover:bg-slate-50 transition active:scale-95"
           >
             <span className="text-[10px] font-bold text-slate-700 leading-tight">
-              Pacotes esterilizados
+              Pacotes cadastrados
             </span>
             <div className="my-1">
-              <span className="text-2xl font-black text-[#3B42B2]">40</span>
+              <span className="text-2xl font-black text-[#3B42B2]">
+                {materiais.length}
+              </span>
             </div>
-            <span className="text-[10px] font-bold text-slate-400">Hoje</span>
+            <span className="text-[10px] font-bold text-slate-400">Total</span>
           </div>
 
           {/* Em andamento */}
@@ -65,7 +83,9 @@ export default function CmeProfessor() {
               Pendências
             </span>
             <div className="my-1">
-              <span className="text-2xl font-black text-rose-600">3</span>
+              <span className="text-2xl font-black text-rose-600">
+                {materiais.filter(item => item.estoqueAtual <= item.estoqueMinimo).length || 3}
+              </span>
             </div>
             <span className="text-[10px] font-bold text-slate-400">Ações</span>
           </div>
@@ -151,7 +171,7 @@ export default function CmeProfessor() {
           </div>
         </div>
 
-        {/* 4. PACOTES ESTERILIZADOS */}
+        {/* 4. PACOTES ESTERILIZADOS / MATERIAIS */}
         <div className="space-y-2">
           <div className="flex items-center justify-between">
             <h3 className="font-extrabold text-[#3B42B2] text-xs">
@@ -166,57 +186,44 @@ export default function CmeProfessor() {
           </div>
 
           <div className="space-y-3">
-            {/* Item 1 */}
-            <div 
-              onClick={() => navigate('/app/professor/cme/pacotes-esterilizados')}
-              className="border border-slate-200 rounded-2xl p-3 bg-white shadow-xs flex items-center justify-between cursor-pointer hover:bg-slate-50 transition active:scale-98"
-            >
-              <div className="flex items-center gap-3">
-                <div className="w-12 h-12 bg-slate-100 rounded-xl overflow-hidden flex items-center justify-center border border-slate-200/60 shrink-0">
-                  <span className="text-xl">📦</span>
-                </div>
-                <div className="space-y-0.5">
-                  <h4 className="font-extrabold text-[#3B42B2] text-xs">Kit Cirúrgico 01</h4>
-                  <p className="text-[9px] text-slate-500 font-bold">Código: 125794215546</p>
-                  <p className="text-[9px] text-slate-500 font-bold">Autoclave: 01</p>
-                  <p className="text-[9px] text-slate-500 font-bold">Ciclo: 2548</p>
-                  <p className="text-[8px] text-slate-400 font-medium">20/05/2026 - 09:30</p>
-                </div>
+            {materiais.length === 0 ? (
+              <div className="border border-dashed border-slate-200 rounded-2xl p-4 text-center text-slate-400 text-xs font-semibold">
+                Nenhum material cadastrado recentemente.
               </div>
+            ) : (
+              materiais.slice(0, 3).map((item) => (
+                <div 
+                  key={item.id}
+                  onClick={() => navigate('/app/professor/cme/pacotes-esterilizados')}
+                  className="border border-slate-200 rounded-2xl p-3 bg-white shadow-xs flex items-center justify-between cursor-pointer hover:bg-slate-50 transition active:scale-98"
+                >
+                  <div className="flex items-center gap-3">
+                    <div className="w-12 h-12 bg-slate-100 rounded-xl overflow-hidden flex items-center justify-center border border-slate-200/60 shrink-0">
+                      {item.imagem ? (
+                        <img src={item.imagem} alt={item.nome} className="w-full h-full object-cover" />
+                      ) : (
+                        <PackageCheck className="w-6 h-6 text-[#3B42B2]" />
+                      )}
+                    </div>
+                    <div className="space-y-0.5">
+                      <h4 className="font-extrabold text-[#3B42B2] text-xs">{item.nome}</h4>
+                      <p className="text-[9px] text-slate-500 font-bold">Código: {item.codigoBarras}</p>
+                      <p className="text-[9px] text-slate-500 font-bold">Categoria: {item.categoria || 'Geral'}</p>
+                      <p className="text-[8px] text-slate-400 font-medium">
+                        {item.criadoEm ? new Date(item.criadoEm).toLocaleDateString('pt-BR') : 'Hoje'}
+                      </p>
+                    </div>
+                  </div>
 
-              <div className="flex flex-col items-end gap-3">
-                <span className="bg-emerald-100 text-emerald-700 text-[9px] font-extrabold px-2.5 py-0.5 rounded-full">
-                  Válido
-                </span>
-                <ChevronRight className="w-5 h-5 text-[#3B42B2]" />
-              </div>
-            </div>
-
-            {/* Item 2 */}
-            <div 
-              onClick={() => navigate('/app/professor/cme/pacotes-esterilizados')}
-              className="border border-slate-200 rounded-2xl p-3 bg-white shadow-xs flex items-center justify-between cursor-pointer hover:bg-slate-50 transition active:scale-98"
-            >
-              <div className="flex items-center gap-3">
-                <div className="w-12 h-12 bg-slate-100 rounded-xl overflow-hidden flex items-center justify-center border border-slate-200/60 shrink-0">
-                  <span className="text-xl">📦</span>
+                  <div className="flex flex-col items-end gap-3">
+                    <span className="bg-emerald-100 text-emerald-700 text-[9px] font-extrabold px-2.5 py-0.5 rounded-full">
+                      Válido
+                    </span>
+                    <ChevronRight className="w-5 h-5 text-[#3B42B2]" />
+                  </div>
                 </div>
-                <div className="space-y-0.5">
-                  <h4 className="font-extrabold text-[#3B42B2] text-xs">Kit Cirúrgico 03</h4>
-                  <p className="text-[9px] text-slate-500 font-bold">Código: 4687913200005</p>
-                  <p className="text-[9px] text-slate-500 font-bold">Autoclave: 03</p>
-                  <p className="text-[9px] text-slate-500 font-bold">Ciclo: 2548</p>
-                  <p className="text-[8px] text-slate-400 font-medium">20/05/2026 - 09:34</p>
-                </div>
-              </div>
-
-              <div className="flex flex-col items-end gap-3">
-                <span className="bg-emerald-100 text-emerald-700 text-[9px] font-extrabold px-2.5 py-0.5 rounded-full">
-                  Válido
-                </span>
-                <ChevronRight className="w-5 h-5 text-[#3B42B2]" />
-              </div>
-            </div>
+              ))
+            )}
           </div>
         </div>
 

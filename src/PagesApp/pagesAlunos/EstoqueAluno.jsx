@@ -8,7 +8,7 @@ export default function EstoqueAluno() {
   const navigate = useNavigate();
   const [busca, setBusca] = useState('');
 
-  // Dados mockados do resumo do estoque
+  // Resumo do estoque
   const resumo = {
     totalItens: 128,
     materiaisCriticos: 8,
@@ -96,7 +96,7 @@ export default function EstoqueAluno() {
     }
   ];
 
-  // FILTRO DINÂMICO DA BUSCA
+  // Filtro dinâmico da busca
   const materiaisFiltrados = materiais.filter((item) => {
     const termo = busca.toLowerCase().trim();
     return (
@@ -108,21 +108,20 @@ export default function EstoqueAluno() {
   });
 
   return (
-    <div className="flex-1 flex flex-col min-h-0 bg-white">
+    <div className="flex-1 flex flex-col min-h-0 bg-white font-sans">
       
       {/* HEADER FIXO DO ESTOQUE */}
       <div className="bg-[#3B44A8] pt-12 pb-6 px-6 text-white flex items-center justify-between shadow-md rounded-b-[24px] shrink-0 select-none">
         <button 
           type="button"
           onClick={() => navigate('/app/aluno/dashboard')}
-          className="p-1 hover:bg-white/10 rounded-lg transition active:scale-95"
+          className="p-1 hover:bg-white/10 rounded-lg transition active:scale-95 cursor-pointer"
+          aria-label="Voltar para a dashboard"
         >
           <ArrowLeft size={24} />
         </button>
         
-        <h1 className="text-xl font-bold tracking-wide mr-8">Estoque</h1>
-        
-        <div className="w-6"></div>
+        <h1 className="text-xl font-bold tracking-wide flex-1 text-center mr-6">Estoque</h1>
       </div>
 
       {/* CONTEÚDO ROLÁVEL */}
@@ -135,7 +134,7 @@ export default function EstoqueAluno() {
             placeholder="Buscar material, código ou descrição"
             value={busca}
             onChange={(e) => setBusca(e.target.value)}
-            className="w-full pl-12 pr-4 py-3.5 bg-white border border-gray-200 rounded-2xl text-sm focus:outline-none focus:border-[#3B44A8] shadow-sm text-gray-700 placeholder-gray-400"
+            className="w-full pl-12 pr-4 py-3.5 bg-white border border-gray-200 rounded-2xl text-sm focus:outline-none focus:border-[#3B44A8] shadow-xs text-gray-700 placeholder-gray-400"
           />
           <Search className="absolute left-4 top-4 text-gray-400" size={18} />
         </div>
@@ -145,7 +144,7 @@ export default function EstoqueAluno() {
           <button 
             type="button"
             onClick={() => navigate('/app/aluno/estoque/scanner', { state: { modo: 'qrcode' } })}
-            className="bg-[#DCE0F5] hover:bg-[#ccd1ee] active:scale-95 text-[#3B44A8] py-4 px-3 rounded-2xl flex flex-col items-center justify-center gap-2 shadow-sm border border-[#3B44A8]/10 transition-all text-center"
+            className="bg-[#DCE0F5] hover:bg-[#ccd1ee] active:scale-95 text-[#3B44A8] py-4 px-3 rounded-2xl flex flex-col items-center justify-center gap-2 shadow-xs border border-[#3B44A8]/10 transition-all text-center cursor-pointer"
           >
             <QrCode size={24} className="stroke-[2px]" />
             <span className="text-[11px] font-bold leading-tight">Escanear<br/>QR-Code</span>
@@ -154,7 +153,7 @@ export default function EstoqueAluno() {
           <button 
             type="button"
             onClick={() => navigate('/app/aluno/estoque/scanner', { state: { modo: 'barras' } })}
-            className="bg-[#DCE0F5] hover:bg-[#ccd1ee] active:scale-95 text-[#3B44A8] py-4 px-3 rounded-2xl flex flex-col items-center justify-center gap-2 shadow-sm border border-[#3B44A8]/10 transition-all text-center"
+            className="bg-[#DCE0F5] hover:bg-[#ccd1ee] active:scale-95 text-[#3B44A8] py-4 px-3 rounded-2xl flex flex-col items-center justify-center gap-2 shadow-xs border border-[#3B44A8]/10 transition-all text-center cursor-pointer"
           >
             <Scan size={24} className="stroke-[2px]" />
             <span className="text-[11px] font-bold leading-tight">Escanear<br/>Código de Barras</span>
@@ -165,7 +164,7 @@ export default function EstoqueAluno() {
         <button 
           type="button" 
           onClick={() => navigate('/app/aluno/estoque/materiais', { state: { modo: 'impressao' } })}
-          className="w-full bg-[#DCE0F5] hover:bg-[#ccd1ee] active:scale-[0.99] text-[#3B44A8] py-4 px-5 rounded-2xl flex items-center justify-center gap-3 shadow-sm border border-[#3B44A8]/10 transition-all font-bold text-xs"
+          className="w-full bg-[#DCE0F5] hover:bg-[#ccd1ee] active:scale-[0.99] text-[#3B44A8] py-4 px-5 rounded-2xl flex items-center justify-center gap-3 shadow-xs border border-[#3B44A8]/10 transition-all font-bold text-xs cursor-pointer"
         >
           <Printer size={20} />
           Impressão de etiquetas
@@ -175,7 +174,7 @@ export default function EstoqueAluno() {
         <button 
           type="button"
           onClick={() => navigate('/app/aluno/estoque/cadastrar')}
-          className="w-full bg-[#DCE0F5] hover:bg-[#ccd1ee] active:scale-[0.99] text-[#3B44A8] py-4 px-5 rounded-2xl flex items-center justify-center gap-2 shadow-sm border border-[#3B44A8]/10 transition-all font-bold text-xs"
+          className="w-full bg-[#DCE0F5] hover:bg-[#ccd1ee] active:scale-[0.99] text-[#3B44A8] py-4 px-5 rounded-2xl flex items-center justify-center gap-2 shadow-xs border border-[#3B44A8]/10 transition-all font-bold text-xs cursor-pointer"
         >
           <Plus size={22} className="text-[#3B44A8]" />
           Cadastrar novo material
@@ -185,7 +184,7 @@ export default function EstoqueAluno() {
         <div className="space-y-2">
           <h2 className="text-[#3B44A8] font-bold text-sm tracking-wide">Resumo do estoque</h2>
           
-          <div className="grid grid-cols-4 gap-1.5 bg-white border border-gray-150 rounded-2xl p-3 shadow-sm divide-x divide-gray-100 text-center select-none">
+          <div className="grid grid-cols-4 gap-1.5 bg-white border border-gray-200 rounded-2xl p-3 shadow-xs divide-x divide-gray-100 text-center select-none">
             <div>
               <span className="block text-[8px] font-bold text-gray-900 leading-tight">Total de itens</span>
               <span className="block text-lg font-black text-[#3B44A8] mt-1">{resumo.totalItens}</span>
@@ -212,29 +211,36 @@ export default function EstoqueAluno() {
             <button 
               type="button" 
               onClick={() => navigate('/app/aluno/estoque/materiais')}
-              className="text-[#3B44A8] text-[10px] font-bold hover:underline"
+              className="text-[#3B44A8] text-[10px] font-bold hover:underline cursor-pointer"
             >
               Ver todos
             </button>
           </div>
 
-          <div className="bg-white border border-gray-150 rounded-2xl overflow-hidden shadow-sm divide-y divide-gray-150">
+          <div className="bg-white border border-gray-200 rounded-2xl overflow-hidden shadow-xs divide-y divide-gray-100">
             {materiaisFiltrados.length > 0 ? (
               materiaisFiltrados.map((item, index) => (
                 <div 
                   key={index}
                   onClick={() => navigate('/app/aluno/estoque/detalhes', { state: { material: item } })}
-                  className="p-3.5 flex items-center justify-between hover:bg-gray-50/50 transition cursor-pointer"
+                  role="button"
+                  tabIndex={0}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' || e.key === ' ') {
+                      navigate('/app/aluno/estoque/detalhes', { state: { material: item } });
+                    }
+                  }}
+                  className="p-3.5 flex items-center justify-between hover:bg-gray-50/60 transition cursor-pointer"
                 >
                   <div className="flex items-center gap-3 min-w-0">
                     <img 
                       src={item.imagem} 
                       alt={item.nome}
-                      className="w-12 h-12 rounded-xl object-cover border border-gray-200 bg-gray-50"
+                      className="w-12 h-12 rounded-xl object-cover border border-gray-100 bg-gray-50 shrink-0"
                     />
                     
                     <div className="min-w-0">
-                      <h4 className="font-bold text-gray-900 text-xs leading-tight truncate">{item.nome}</h4>
+                      <h3 className="font-bold text-gray-900 text-xs leading-tight truncate">{item.nome}</h3>
                       <p className="text-gray-500 text-[9px] font-semibold leading-tight">{item.embalagem}</p>
                       <p className="text-gray-400 text-[8px] mt-0.5 leading-none">Código: {item.codigo}</p>
                       

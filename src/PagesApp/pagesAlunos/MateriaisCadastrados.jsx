@@ -77,45 +77,63 @@ export default function MateriaisCadastrados() {
     a.nome.localeCompare(b.nome)
   );
 
+  const handleSelecionarMaterial = (material) => {
+    navigate('/app/aluno/estoque/configurar-etiqueta', { state: { material } });
+  };
+
   return (
-    <div className="flex-1 flex flex-col min-h-0 bg-white">
+    <div className="flex-1 flex flex-col min-h-0 bg-white font-sans">
       
+      {/* TOPO FIXO */}
       <div className="bg-[#3B44A8] pt-12 pb-6 px-6 text-white flex items-center justify-between shadow-md rounded-b-[24px] shrink-0 select-none">
         <button 
           type="button"
           onClick={() => navigate('/app/aluno/estoque')}
-          className="p-1 hover:bg-white/10 rounded-lg transition active:scale-95"
+          className="p-1 hover:bg-white/10 rounded-lg transition active:scale-95 cursor-pointer"
+          aria-label="Voltar para a tela de estoque"
         >
           <ArrowLeft size={24} />
         </button>
-        <h1 className="text-xl font-bold tracking-wide mr-8">Materiais cadastrados</h1>
-        <div className="w-6"></div>
+        <h1 className="text-xl font-bold tracking-wide flex-1 text-center mr-6">
+          Materiais cadastrados
+        </h1>
       </div>
 
+      {/* CONTEÚDO ROLÁVEL */}
       <div className="flex-1 overflow-y-auto px-5 py-5 space-y-5 pb-24">
         
-        <div className="bg-[#DCE0F5] text-[#3B44A8] p-4 rounded-2xl flex items-start gap-3 shadow-sm border border-[#3B44A8]/10 select-none">
+        {/* CAIXA INFORMATIVA */}
+        <div className="bg-[#DCE0F5] text-[#3B44A8] p-4 rounded-2xl flex items-start gap-3 shadow-xs border border-[#3B44A8]/10 select-none">
           <Info size={20} className="shrink-0 mt-0.5" />
           <p className="text-[11px] font-bold leading-relaxed">
             Selecione um material para configurar e imprimir as etiquetas.
           </p>
         </div>
 
+        {/* LISTA DE MATERIAIS */}
         <div className="space-y-4">
           <h2 className="text-[#3B44A8] font-bold text-sm tracking-wide select-none">
             Materiais recentes
           </h2>
 
-          <div className="space-y-4">
+          <div className="space-y-4" role="list">
             {materiaisOrdenados.map((item) => (
               <div
                 key={item.id}
-                onClick={() => navigate('/app/aluno/estoque/configurar-etiqueta', { state: { material: item } })}
-                className="bg-white border border-gray-150 rounded-2xl p-4 shadow-sm flex gap-4 hover:border-gray-300 transition active:scale-[0.99] cursor-pointer relative"
+                role="listitem"
+                tabIndex={0}
+                onClick={() => handleSelecionarMaterial(item)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' || e.key === ' ') {
+                    e.preventDefault();
+                    handleSelecionarMaterial(item);
+                  }
+                }}
+                className="bg-white border border-gray-150 rounded-2xl p-4 shadow-xs flex gap-4 hover:border-gray-300 transition active:scale-[0.99] cursor-pointer relative focus:outline-none focus:ring-2 focus:ring-[#3B44A8]"
               >
                 <img 
                   src={item.imagem} 
-                  alt={item.nome}
+                  alt={`Imagem ilustrativa do material ${item.nome}`}
                   className="w-16 h-16 rounded-xl object-cover border border-gray-150 bg-gray-50 shrink-0 select-none"
                 />
 
@@ -123,10 +141,10 @@ export default function MateriaisCadastrados() {
                   <h3 className="text-gray-900 font-bold text-sm leading-tight mb-1 truncate">
                     {item.nome}
                   </h3>
-                  <p><span className="text-gray-900 font-bold">Código:</span> {item.codigo}</p>
-                  <p><span className="text-gray-900 font-bold">Lote:</span> {item.lote}</p>
-                  <p><span className="text-gray-900 font-bold">Val:</span> {item.val}</p>
-                  <p><span className="text-gray-900 font-bold">Quantidade:</span> {item.quantidade}</p>
+                  <p className="truncate"><span className="text-gray-900 font-bold">Código:</span> {item.codigo}</p>
+                  <p className="truncate"><span className="text-gray-900 font-bold">Lote:</span> {item.lote}</p>
+                  <p className="truncate"><span className="text-gray-900 font-bold">Val:</span> {item.val}</p>
+                  <p className="truncate"><span className="text-gray-900 font-bold">Quantidade:</span> {item.quantidade}</p>
                   {item.observacoes && (
                     <p className="truncate"><span className="text-gray-900 font-bold">Observações:</span> {item.observacoes}</p>
                   )}

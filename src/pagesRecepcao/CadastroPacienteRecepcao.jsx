@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { ArrowLeft, Save, ToggleLeft } from 'lucide-react';
+import { ArrowLeft, Save, ToggleLeft, Loader2, AlertCircle, CheckCircle2 } from 'lucide-react';
+import api from '../Services/api';
 
 export default function CadastroPacienteRecepcao() {
   const navigate = useNavigate();
@@ -9,6 +10,7 @@ export default function CadastroPacienteRecepcao() {
   const pacienteEdicao = location.state?.pacienteEdicao || null;
   const isEditing = !!pacienteEdicao;
 
+  // Estados dos dados pessoais e endereço
   const [nome, setNome] = useState('');
   const [dataNascimento, setDataNascimento] = useState('');
   const [sexo, setSexo] = useState('');
@@ -24,29 +26,87 @@ export default function CadastroPacienteRecepcao() {
   const [uf, setUf] = useState('PR');
   const [status, setStatus] = useState('ativo');
 
+  // Estados do responsável
   const [nomeResponsavel, setNomeResponsavel] = useState('');
   const [telefoneResponsavel, setTelefoneResponsavel] = useState('');
   const [parentesco, setParentesco] = useState('');
 
+  // Estados de submissão e controle da UI
+  const [carregando, setCarregando] = useState(false);
+  const [erro, setErro] = useState('');
+  const [sucesso, setSucesso] = useState('');
+
+  // Preenchimento dos dados em caso de edição
   useEffect(() => {
     if (isEditing && pacienteEdicao) {
       setNome(pacienteEdicao.nome || '');
+      setDataNascimento(pacienteEdicao.dataNascimento ? pacienteEdicao.dataNascimento.split('T')[0] : '');
+      setSexo(pacienteEdicao.sexo || '');
       setCpf(pacienteEdicao.cpf || '');
+      setTelefone(pacienteEdicao.telefone || '');
+      setEmail(pacienteEdicao.email || '');
+      setEndereco(pacienteEdicao.endereco || '');
+      setNumero(pacienteEdicao.numero || '');
+      setComplemento(pacienteEdicao.complemento || '');
+      setBairro(pacienteEdicao.bairro || '');
+      setCep(pacienteEdicao.cep || '');
+      setCidade(pacienteEdicao.cidade || '');
+      setUf(pacienteEdicao.uf || 'PR');
       setStatus(pacienteEdicao.status || 'ativo');
+
+      if (pacienteEdicao.responsavel) {
+        setNomeResponsavel(pacienteEdicao.responsavel.nomeResponsavel || pacienteEdicao.responsavel.nome || '');
+        setTelefoneResponsavel(pacienteEdicao.responsavel.telefoneResponsavel || pacienteEdicao.responsavel.telefone || '');
+        setParentesco(pacienteEdicao.responsavel.parentesco || '');
+      }
     }
   }, [isEditing, pacienteEdicao]);
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
+    setCarregando(true);
+    setErro('');
+    setSucesso('');
     
     const dadosPaciente = {
-      nome, dataNascimento, sexo, cpf, telefone, email,
-      endereco, numero, complemento, bairro, cep, cidade, uf, status,
+      nome, 
+      dataNascimento, 
+      sexo, 
+      cpf, 
+      telefone, 
+      email,
+      endereco, 
+      numero, 
+      complemento, 
+      bairro, 
+      cep, 
+      cidade, 
+      uf, 
+      status,
       responsavel: { nomeResponsavel, telefoneResponsavel, parentesco }
     };
 
-    console.log(isEditing ? "Editando:" : "Criando:", dadosPaciente);
-    navigate('/app/recepcao/pacientes');
+    try {
+      if (isEditing) {
+        const id = pacienteEdicao.id || pacienteEdicao._id;
+        await api.put(`/pacientes/${id}`, dadosPaciente);
+        setSucesso('Paciente atualizado com sucesso!');
+      } else {
+        await api.post('/pacientes', dadosPaciente);
+        setSucesso('Paciente cadastrado com sucesso!');
+      }
+
+      setTimeout(() => {
+        navigate('/app/recepcao/pacientes');
+      }, 1500);
+
+    } catch (err) {
+      console.error('Erro ao salvar paciente:', err);
+      const msg = err.response?.data?.message || 'Falha ao salvar paciente. Verifique os dados fornecidos.';
+      setErro(msg);
+    } finally {
+      setCarregando(false);
+    }
   };
 
   return (
@@ -69,7 +129,23 @@ export default function CadastroPacienteRecepcao() {
 
       <div className="p-8 max-w-5xl w-full mx-auto flex-1 pb-24">
         <form onSubmit={handleSubmit} className="space-y-8">
-          
+
+          {/* Mensagens de Feedback */}
+          {erro && (
+            <div className="p-4 bg-red-50 border border-red-200 text-red-600 text-sm rounded-xl flex items-center gap-3 font-medium">
+              <AlertCircle size={20} className="shrink-0" />
+              {erro}
+            </div>
+          )}
+
+          {sucesso && (
+            <div className="p-4 bg-emerald-50 border border-emerald-200 text-emerald-700 text-sm rounded-xl flex items-center gap-3 font-medium">
+              <CheckCircle2 size={20} className="shrink-0 text-emerald-600" />
+              {sucesso}
+            </div>
+          )}
+
+          {/* Dados Pessoais */}
           <div className="bg-white border border-gray-200 rounded-2xl p-6 shadow-sm space-y-6">
             <div className="flex items-center justify-between border-b border-gray-100 pb-3">
               <h2 className="text-[#3B44A8] font-black text-base tracking-wide">Dados pessoais</h2>
@@ -171,6 +247,7 @@ export default function CadastroPacienteRecepcao() {
             </div>
           </div>
 
+          {/* Dados do Responsável */}
           <div className="bg-white border border-gray-200 rounded-2xl p-6 shadow-sm space-y-6">
             <div className="border-b border-gray-100 pb-3">
               <h2 className="text-[#3B44A8] font-black text-base tracking-wide">
@@ -186,7 +263,7 @@ export default function CadastroPacienteRecepcao() {
 
               <div className="md:col-span-6">
                 <label className="block text-gray-700 text-xs font-bold mb-1.5">Telefone do responsável</label>
-                <input type="tel" placeholder="(00) 00000-0000" value={telefoneResponsavel} onChange={(e) => setTelephoneResponsavel(e.target.value)} className="input-web" />
+                <input type="tel" placeholder="(00) 00000-0000" value={telefoneResponsavel} onChange={(e) => setTelefoneResponsavel(e.target.value)} className="input-web" />
               </div>
 
               <div className="md:col-span-6">
@@ -202,13 +279,26 @@ export default function CadastroPacienteRecepcao() {
             </div>
           </div>
 
+          {/* Botão de Ação */}
           <div className="flex justify-end pt-2 select-none">
             <button 
               type="submit"
-              className="w-full sm:w-auto min-w-[200px] bg-[#F9A814] hover:bg-[#e0940f] text-white font-bold text-sm py-3.5 px-6 rounded-xl transition flex items-center justify-center gap-2 shadow-md active:scale-[0.98]"
+              disabled={carregando}
+              className={`w-full sm:w-auto min-w-[200px] bg-[#F9A814] hover:bg-[#e0940f] text-white font-bold text-sm py-3.5 px-6 rounded-xl transition flex items-center justify-center gap-2 shadow-md active:scale-[0.98] ${
+                carregando ? 'opacity-70 cursor-not-allowed' : ''
+              }`}
             >
-              <Save size={18} />
-              Salvar paciente
+              {carregando ? (
+                <>
+                  <Loader2 size={18} className="animate-spin" />
+                  Salvando...
+                </>
+              ) : (
+                <>
+                  <Save size={18} />
+                  Salvar paciente
+                </>
+              )}
             </button>
           </div>
 
