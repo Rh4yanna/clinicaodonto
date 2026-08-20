@@ -244,7 +244,7 @@ export default function CmeProfessor() {
                 <span className="text-2xl">⚙️</span>
               </div>
               <div className="space-y-0.5">
-                <h4 className="font-extrabold text-[#3B42B2] text-xs">Ciclo 2548</h4>
+                <h4 className="font-extrabold text-[#3B42B2] text-xs">Lote 2548</h4>
                 <p className="text-[9px] text-slate-500 font-bold">Autoclave: 02 • 134º - 18 min</p>
                 <p className="text-[9px] text-slate-500 font-bold">Início: 25/05 - 10:30 | Fim: 25/05 - 10:50</p>
                 <p className="text-[9px] text-slate-500 font-bold">Responsável: Aline Soares</p>

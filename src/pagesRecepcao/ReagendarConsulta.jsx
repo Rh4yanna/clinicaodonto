@@ -1,14 +1,13 @@
 import { useState } from 'react';
 import { useNavigate, useLocation, useParams } from 'react-router-dom';
 import { ArrowLeft, User, Calendar, Clock, ChevronRight, Info, Loader2, CheckCircle2, AlertCircle } from 'lucide-react';
-import api from '../Services/api'; // Módulo de API do projeto
+import api from '../Services/api';
 
 export default function ReagendarConsulta() {
   const navigate = useNavigate();
   const location = useLocation();
   const { id } = useParams();
 
-  // Tenta obter os dados do agendamento passados via state ou usa objeto padrão
   const consultaAtual = location.state?.agendamento || location.state?.consulta || {};
   const agendamentoId = id || consultaAtual.id || consultaAtual._id;
 
@@ -18,18 +17,15 @@ export default function ReagendarConsulta() {
     status: 'Ativo'
   };
 
-  // Formulário de Reagendamento
   const [novaData, setNovaData] = useState('');
   const [novoHorario, setNovoHorario] = useState('');
   const [motivo, setMotivo] = useState('');
   const [observacoes, setObservacoes] = useState('');
 
-  // Estados de Controle de Requisição
   const [salvando, setSalvando] = useState(false);
   const [erro, setErro] = useState('');
   const [sucesso, setSucesso] = useState(false);
 
-  // Submissão do Reagendamento para a API
   const handleReagendar = async (e) => {
     e.preventDefault();
 
@@ -55,10 +51,8 @@ export default function ReagendarConsulta() {
         status: 'AGENDADO'
       };
 
-      // Chamada PUT para reagendar
       await api.put(`/agendamentos/${agendamentoId}/reagendar`, payload)
         .catch(async () => {
-          // Fallback para rota padrão caso a rota específica não exista
           await api.put(`/agendamentos/${agendamentoId}`, {
             ...consultaAtual,
             ...payload
@@ -153,9 +147,14 @@ export default function ReagendarConsulta() {
               {consultaAtual.aluno && (
                 <p className="text-gray-500 font-medium">Aluno: {consultaAtual.aluno}</p>
               )}
-              {consultaAtual.especialidade && (
-                <p className="text-gray-500 font-medium">Especialidade: {consultaAtual.especialidade}</p>
+              
+              {/* EXIBIÇÃO DE DISCIPLINA E MÓDULO */}
+              {(consultaAtual.disciplina || consultaAtual.modulo) && (
+                <p className="text-gray-500 font-medium">
+                  {consultaAtual.disciplina} {consultaAtual.modulo ? `• ${consultaAtual.modulo}` : ''}
+                </p>
               )}
+
               {consultaAtual.consultorio && (
                 <p className="text-gray-500 font-medium">Local: {consultaAtual.consultorio}</p>
               )}

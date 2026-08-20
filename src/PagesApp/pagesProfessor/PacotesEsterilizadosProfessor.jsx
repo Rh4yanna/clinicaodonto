@@ -17,7 +17,7 @@ const MOCK_PACOTES = [
     nome: 'Kit Cirúrgico 01',
     codigo: '125794215546',
     autoclave: '01',
-    ciclo: '2548',
+    lote: '2548',
     data: '20/05/2026 - 09:30',
     status: 'Válido',
     tipo: 'Kit Cirúrgico'
@@ -27,7 +27,7 @@ const MOCK_PACOTES = [
     nome: 'Kit Cirúrgico 03',
     codigo: '4687913200005',
     autoclave: '03',
-    ciclo: '2548',
+    lote: '2548',
     data: '20/05/2026 - 09:34',
     status: 'Válido',
     tipo: 'Kit Cirúrgico'
@@ -37,7 +37,7 @@ const MOCK_PACOTES = [
     nome: 'Campo Fenestrado 02',
     codigo: '9876543210012',
     autoclave: '02',
-    ciclo: '2545',
+    lote: '2545',
     data: '18/05/2026 - 14:20',
     status: 'Vencido',
     tipo: 'Campo'
@@ -47,7 +47,7 @@ const MOCK_PACOTES = [
     nome: 'Bandeja de Diagnóstico',
     codigo: '1122334455667',
     autoclave: '01',
-    ciclo: '2540',
+    lote: '2540',
     data: '15/05/2026 - 11:00',
     status: 'Em Uso',
     tipo: 'Instrumental'
@@ -262,7 +262,7 @@ export default function PacotesEsterilizadosProfessor() {
                       Autoclave: {item.autoclave}
                     </p>
                     <p className="text-[9px] text-slate-500 font-bold">
-                      Ciclo: {item.ciclo}
+                      Lote: {item.lote}
                     </p>
                     <p className="text-[8px] text-slate-400 font-medium mt-0.5">
                       {item.data}

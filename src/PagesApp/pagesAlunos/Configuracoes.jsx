@@ -1,13 +1,31 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ArrowLeft, LogOut } from 'lucide-react';
 
 export default function Configuracoes() {
   const navigate = useNavigate();
   const [showModal, setShowModal] = useState(false);
+  const [usuario, setUsuario] = useState({ nome: 'Usuário', perfil: 'Aluno' });
+
+  // Busca as informações do usuário salvas no localStorage durante o Login
+  useEffect(() => {
+    const usuarioSalvo = localStorage.getItem('usuario');
+    if (usuarioSalvo) {
+      try {
+        const dados = JSON.parse(usuarioSalvo);
+        setUsuario(dados);
+      } catch (err) {
+        console.error('Erro ao ler dados do usuário:', err);
+      }
+    }
+  }, []);
 
   const handleLogout = () => {
-    // Limpa tokens se necessário
+    // Limpa a sessão no navegador
+    localStorage.removeItem('token');
+    localStorage.removeItem('usuario');
+    
+    // Redireciona para a tela de login
     navigate('/login');
   };
 
@@ -17,7 +35,7 @@ export default function Configuracoes() {
       {/* TOPO FIXO - Azul com Título e Botão Voltar */}
       <div className="bg-[#3B44A8] pt-12 pb-6 px-6 text-white flex items-center justify-between shadow-md rounded-b-[24px] shrink-0 select-none">
         <button 
-          onClick={() => navigate('/app/aluno')}
+          onClick={() => navigate(-1)}
           className="p-1 hover:bg-white/10 rounded-lg transition active:scale-95"
         >
           <ArrowLeft size={24} />
@@ -29,10 +47,10 @@ export default function Configuracoes() {
         <div className="w-6"></div>
       </div>
 
-      {/* CONTEÚDO PRINCIPAL - Rolável, encaixado dentro do LayoutAluno */}
+      {/* CONTEÚDO PRINCIPAL */}
       <div className="flex-1 bg-white px-6 pt-6 space-y-6 overflow-y-auto pb-4">
         
-        {/* Bloco do Perfil do Aluno */}
+        {/* Bloco do Perfil do Usuário Dinâmico */}
         <div className="flex items-center gap-4 py-2 border-b border-gray-100 select-none">
           {/* Avatar Genérico */}
           <div className="w-14 h-14 bg-gray-100 rounded-full border border-gray-200 flex items-center justify-center shrink-0">
@@ -42,15 +60,19 @@ export default function Configuracoes() {
           </div>
           
           <div>
-            <h3 className="font-extrabold text-gray-950 text-base leading-tight">Rhaya Borges</h3>
-            <p className="text-gray-500 text-xs font-semibold">Aluno</p>
+            <h3 className="font-extrabold text-gray-950 text-base leading-tight">
+              {usuario.nome || usuario.name || 'Usuário'}
+            </h3>
+            <p className="text-gray-500 text-xs font-semibold capitalize">
+              {usuario.perfil || usuario.role || 'Aluno'}
+            </p>
           </div>
         </div>
 
         {/* Botão Sair do Sistema (Laranja) */}
         <button
           onClick={() => setShowModal(true)}
-          className="w-full py-4 bg-[#F9A814] hover:bg-[#e0940f] active:scale-[0.98] rounded-xl font-bold text-white transition-all shadow-md flex items-center justify-center gap-2"
+          className="w-full py-4 bg-[#F9A814] hover:bg-[#e0940f] active:scale-[0.98] rounded-xl font-bold text-white transition-all shadow-md flex items-center justify-center gap-2 cursor-pointer"
         >
           <LogOut size={20} className="rotate-180" />
           Sair do sistema
@@ -58,7 +80,7 @@ export default function Configuracoes() {
 
       </div>
 
-      {/* MODAL DE CONFIRMAÇÃO DE LOGOUT (Escurece o fundo sobrepondo apenas o conteúdo interno) */}
+      {/* MODAL DE CONFIRMAÇÃO DE LOGOUT */}
       {showModal && (
         <div className="absolute inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-6">
           <div className="bg-white w-full max-w-[300px] rounded-[24px] p-6 text-center shadow-2xl flex flex-col items-center space-y-4">
@@ -82,13 +104,13 @@ export default function Configuracoes() {
             <div className="w-full flex gap-3 pt-2">
               <button
                 onClick={() => setShowModal(false)}
-                className="flex-1 py-3 border border-gray-300 hover:bg-gray-50 active:scale-95 text-gray-700 font-bold rounded-xl text-xs transition"
+                className="flex-1 py-3 border border-gray-300 hover:bg-gray-50 active:scale-95 text-gray-700 font-bold rounded-xl text-xs transition cursor-pointer"
               >
                 Cancelar
               </button>
               <button
                 onClick={handleLogout}
-                className="flex-1 py-3 bg-[#00009C] hover:bg-[#00007A] active:scale-95 text-white font-bold rounded-xl text-xs transition shadow-md"
+                className="flex-1 py-3 bg-[#00009C] hover:bg-[#00007A] active:scale-95 text-white font-bold rounded-xl text-xs transition shadow-md cursor-pointer"
               >
                 Sair
               </button>

@@ -87,17 +87,21 @@ export default function CadastroPacienteRecepcao() {
     };
 
     try {
+      let response;
       if (isEditing) {
         const id = pacienteEdicao.id || pacienteEdicao._id;
-        await api.put(`/pacientes/${id}`, dadosPaciente);
+        response = await api.put(`/pacientes/${id}`, dadosPaciente);
         setSucesso('Paciente atualizado com sucesso!');
       } else {
-        await api.post('/pacientes', dadosPaciente);
+        response = await api.post('/pacientes', dadosPaciente);
         setSucesso('Paciente cadastrado com sucesso!');
       }
 
+      const pacienteSalvo = response?.data || { ...dadosPaciente, cpf };
+
       setTimeout(() => {
-        navigate('/app/recepcao/pacientes');
+        // Retorna via histórico trazendo o paciente criado de volta ao agendamento
+        navigate(-1, { state: { pacienteNovo: pacienteSalvo } });
       }, 1500);
 
     } catch (err) {
@@ -116,8 +120,8 @@ export default function CadastroPacienteRecepcao() {
         <div className="flex items-center gap-4">
           <button 
             type="button"
-            onClick={() => navigate('/app/recepcao/pacientes')}
-            className="p-2 text-gray-500 hover:text-[#3B44A8] hover:bg-gray-100 rounded-xl transition"
+            onClick={() => navigate(-1)}
+            className="p-2 text-gray-500 hover:text-[#3B44A8] hover:bg-gray-100 rounded-xl transition cursor-pointer"
           >
             <ArrowLeft size={20} />
           </button>
@@ -284,7 +288,7 @@ export default function CadastroPacienteRecepcao() {
             <button 
               type="submit"
               disabled={carregando}
-              className={`w-full sm:w-auto min-w-[200px] bg-[#F9A814] hover:bg-[#e0940f] text-white font-bold text-sm py-3.5 px-6 rounded-xl transition flex items-center justify-center gap-2 shadow-md active:scale-[0.98] ${
+              className={`w-full sm:w-auto min-w-[200px] bg-[#F9A814] hover:bg-[#e0940f] text-white font-bold text-sm py-3.5 px-6 rounded-xl transition flex items-center justify-center gap-2 shadow-md active:scale-[0.98] cursor-pointer ${
                 carregando ? 'opacity-70 cursor-not-allowed' : ''
               }`}
             >
@@ -325,7 +329,6 @@ export default function CadastroPacienteRecepcao() {
           color: #9ca3af;
         }
       `}</style>
-
     </div>
   );
 }

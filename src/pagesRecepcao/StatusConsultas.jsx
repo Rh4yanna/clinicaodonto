@@ -1,31 +1,28 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { ArrowLeft, Bell, CheckCircle, AlertTriangle, ChevronRight, Loader2, AlertCircle } from 'lucide-react';
-import api from '../Services/api'; // Ajustado caminho e maiúscula para Services
+import api from '../Services/api';
 
 export default function StatusConsultas() {
   const navigate = useNavigate();
   const location = useLocation();
 
-  // Captura se o dashboard enviou alguma aba preferencial, senão assume 'confirmadas'
   const abaInicial = location.state?.abaInicial || 'confirmadas';
-  const [abaAtiva, setAbaAtiva] = useState(abaInicial); // 'confirmadas', 'pendentes', 'faltas'
+  const [abaAtiva, setAbaAtiva] = useState(abaInicial);
 
   const [consultas, setConsultas] = useState([]);
   const [carregando, setCarregando] = useState(true);
   const [erro, setErro] = useState('');
 
-  // Busca agendamentos filtrados pela aba na API
   const carregarConsultas = useCallback(async () => {
     try {
       setCarregando(true);
       setErro('');
 
-      // Mapeamento das abas para o status do backend
       const mapaStatus = {
         confirmadas: 'CONFIRMADO',
         pendentes: 'PENDENTE',
-        faltas: 'FALTA' // ou 'NAO_COMPARECEU' / 'CANCELADO' conforme convenção da API
+        faltas: 'FALTA'
       };
 
       const statusParam = mapaStatus[abaAtiva] || 'CONFIRMADO';
@@ -152,7 +149,7 @@ export default function StatusConsultas() {
             <p className="text-sm font-bold text-gray-800">{erro}</p>
             <button 
               onClick={carregarConsultas}
-              className="text-xs text-[#3B44A8] font-bold underline mt-1"
+              className="text-xs text-[#3B44A8] font-bold underline mt-1 cursor-pointer"
             >
               Tentar novamente
             </button>
@@ -174,7 +171,8 @@ export default function StatusConsultas() {
                     hora: item.horario || item.hora || '--:--',
                     nome: item.pacienteNome || item.paciente?.nome || 'Paciente sem nome',
                     proc: item.procedimento || item.servico || 'Consulta Geral',
-                    esp: item.especialidade || item.categoria || 'Odontologia',
+                    esp: item.disciplina || item.especialidade || item.categoria || 'Odontologia',
+                    modulo: item.modulo || '',
                     raw: item
                   }} 
                   onSelect={(agendamento) => navigate('/app/recepcao/agenda', { state: { agendamento } })}
@@ -208,7 +206,10 @@ function ItemLista({ paciente, onSelect }) {
         <div className="flex-1 min-w-0">
           <h4 className="font-bold text-gray-950 text-sm truncate">{paciente.nome}</h4>
           <p className="text-gray-600 text-xs font-medium mt-0.5">
-            {paciente.proc} • <span className="text-gray-400 text-[11px]">{paciente.esp}</span>
+            {paciente.proc} •{' '}
+            <span className="text-gray-400 text-[11px]">
+              {paciente.esp} {paciente.modulo ? `(${paciente.modulo})` : ''}
+            </span>
           </p>
         </div>
       </div>

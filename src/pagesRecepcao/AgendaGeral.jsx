@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ChevronLeft, ChevronRight, MoreVertical, User, Plus, Loader2, AlertCircle } from 'lucide-react';
-import api from '../Services/api'; // Ajustado para ../Services/api
+import api from '../Services/api';
 
 export default function AgendaGeral() {
   const navigate = useNavigate();
@@ -18,11 +18,6 @@ export default function AgendaGeral() {
   const ano = dataAncorada.getFullYear();
   const mesId = dataAncorada.getMonth(); 
 
-  // Carrega os agendamentos da API quando o mês ou ano mudar
-  useEffect(() => {
-    buscarAgendamentos();
-  }, [ano, mesId]);
-
   const buscarAgendamentos = async () => {
     setCarregando(true);
     setErro('');
@@ -32,7 +27,18 @@ export default function AgendaGeral() {
       });
       
       const dadosTratados = response.data.map((item) => {
-        const dataObj = new Date(item.dataHora || item.data);
+        // Trata string no formato AAAA-MM-DD para evitar desvio de fuso horário local
+        let dataObj;
+        if (typeof item.dataHora === 'string' && item.dataHora.includes('-')) {
+          const [anoStr, mesStr, diaStr] = item.dataHora.split('T')[0].split('-');
+          dataObj = new Date(Number(anoStr), Number(mesStr) - 1, Number(diaStr));
+        } else if (typeof item.data === 'string' && item.data.includes('-')) {
+          const [anoStr, mesStr, diaStr] = item.data.split('T')[0].split('-');
+          dataObj = new Date(Number(anoStr), Number(mesStr) - 1, Number(diaStr));
+        } else {
+          dataObj = new Date(item.dataHora || item.data);
+        }
+
         return {
           id: item.id || item._id,
           nome: item.pacienteNome || item.paciente?.nome || item.nome || "Paciente sem nome",
@@ -54,6 +60,10 @@ export default function AgendaGeral() {
       setCarregando(false);
     }
   };
+
+  useEffect(() => {
+    buscarAgendamentos();
+  }, [ano, mesId]);
 
   useEffect(() => {
     function handleClickOutside(event) {
@@ -94,11 +104,11 @@ export default function AgendaGeral() {
         {/* Calendário no Topo */}
         <div className="p-6 border-b border-gray-100 bg-gray-50/50 rounded-t-3xl">
           <div className="flex items-center justify-between mb-6">
-            <button onClick={mesAnterior} className="p-2 text-[#3B44A8] hover:bg-gray-200/60 rounded-full transition">
+            <button onClick={mesAnterior} className="p-2 text-[#3B44A8] hover:bg-gray-200/60 rounded-full transition cursor-pointer">
               <ChevronLeft size={20} />
             </button>
             <h2 className="text-[#3B44A8] font-black text-lg">{nomeMesFormatado}</h2>
-            <button onClick={mesSeguinte} className="p-2 text-[#3B44A8] hover:bg-gray-200/60 rounded-full transition">
+            <button onClick={mesSeguinte} className="p-2 text-[#3B44A8] hover:bg-gray-200/60 rounded-full transition cursor-pointer">
               <ChevronRight size={20} />
             </button>
           </div>
@@ -124,7 +134,7 @@ export default function AgendaGeral() {
                 diaSelecionado.getFullYear() === ano;
 
               return (
-                <button key={numeroDia} onClick={() => setDiaSelecionado(dataCard)} className="flex justify-center items-center py-1">
+                <button key={numeroDia} onClick={() => setDiaSelecionado(dataCard)} className="flex justify-center items-center py-1 cursor-pointer">
                   <span className={`w-9 h-9 flex items-center justify-center rounded-full text-sm font-black transition-all ${
                     isSelected 
                       ? 'bg-[#3B44A8] text-white shadow-md shadow-blue-900/20 scale-105' 
@@ -184,7 +194,7 @@ export default function AgendaGeral() {
 
                     <button 
                       onClick={(e) => alternarMenu(item.id, e)}
-                      className="p-1.5 text-gray-400 hover:text-gray-700 hover:bg-gray-100 rounded-lg transition"
+                      className="p-1.5 text-gray-400 hover:text-gray-700 hover:bg-gray-100 rounded-lg transition cursor-pointer"
                     >
                       <MoreVertical size={18} />
                     </button>
@@ -201,7 +211,7 @@ export default function AgendaGeral() {
                             setMenuAbertoId(null);
                             navigate('/app/recepcao/agenda/reagendar', { state: { agendamento: item.objetoOriginal } });
                           }}
-                          className="w-full text-left px-4 py-2 text-xs font-bold text-gray-700 hover:bg-gray-50 transition"
+                          className="w-full text-left px-4 py-2 text-xs font-bold text-gray-700 hover:bg-gray-50 transition cursor-pointer"
                         >
                           Reagendar consulta
                         </button>
@@ -210,7 +220,7 @@ export default function AgendaGeral() {
                             setMenuAbertoId(null);
                             navigate('/app/recepcao/agenda/cancelar', { state: { agendamento: item.objetoOriginal } });
                           }}
-                          className="w-full text-left px-4 py-2 text-xs font-bold text-red-600 hover:bg-red-50 transition"
+                          className="w-full text-left px-4 py-2 text-xs font-bold text-red-600 hover:bg-red-50 transition cursor-pointer"
                         >
                           Cancelar consulta
                         </button>
@@ -231,7 +241,7 @@ export default function AgendaGeral() {
       {/* Botão Novo Agendamento */}
       <button 
         onClick={() => navigate('/app/recepcao/agenda/novo-agendamento')}
-        className="fixed bottom-6 right-8 bg-[#F9A814] text-white p-4 rounded-full shadow-lg shadow-orange-500/20 hover:bg-orange-500 hover:scale-105 transition-all z-40"
+        className="fixed bottom-6 right-8 bg-[#F9A814] text-white p-4 rounded-full shadow-lg shadow-orange-500/20 hover:bg-orange-500 hover:scale-105 transition-all z-40 cursor-pointer"
       >
         <Plus size={24} className="stroke-[3]" />
       </button>

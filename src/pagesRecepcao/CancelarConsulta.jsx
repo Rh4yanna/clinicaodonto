@@ -1,14 +1,13 @@
 import { useState, useEffect } from 'react';
 import { useNavigate, useLocation, useParams } from 'react-router-dom';
 import { ArrowLeft, User, ChevronRight, AlertTriangle, Loader2, CheckCircle2 } from 'lucide-react';
-import api from '../Services/api'; // Import ajustado para subir uma pasta e respeitar a letra maiúscula
+import api from '../Services/api';
 
 export default function CancelarConsulta() {
   const navigate = useNavigate();
   const location = useLocation();
   const { id: paramId } = useParams();
 
-  // Tenta obter os dados do agendamento vindo pela navegação (state)
   const agendamentoState = location.state?.agendamento || null;
 
   const [agendamento, setAgendamento] = useState(agendamentoState);
@@ -20,7 +19,6 @@ export default function CancelarConsulta() {
 
   const agendamentoId = agendamento?.id || agendamento?._id || paramId;
 
-  // Busca os dados da consulta se não tiverem sido passados pelo state
   useEffect(() => {
     if (!agendamento && agendamentoId) {
       setCarregandoDados(true);
@@ -51,12 +49,10 @@ export default function CancelarConsulta() {
     setSucesso('');
 
     try {
-      // Tenta rota específica de cancelamento
       await api.put(`/agendamentos/${agendamentoId}/cancelar`, {
         motivo,
         status: 'CANCELADO'
       }).catch(async () => {
-        // Fallback para rota padrão de atualização de agendamento
         await api.put(`/agendamentos/${agendamentoId}`, {
           ...agendamento,
           status: 'CANCELADO',
@@ -88,7 +84,6 @@ export default function CancelarConsulta() {
     );
   }
 
-  // Mapeamento dinâmico de informações do paciente e da consulta
   const pacienteNome = agendamento?.pacienteNome || agendamento?.paciente?.nome || 'Paciente não identificado';
   const pacienteCpf = agendamento?.pacienteCpf || agendamento?.paciente?.cpf || 'CPF não informado';
   const pacienteStatus = agendamento?.paciente?.status || (agendamento?.paciente?.ativo ? 'Ativo' : 'Ativo');
@@ -171,9 +166,14 @@ export default function CancelarConsulta() {
               {agendamento?.aluno && (
                 <p className="text-gray-500 font-medium">Aluno: {agendamento.aluno}</p>
               )}
-              {agendamento?.disciplina && (
-                <p className="text-gray-500 font-medium">{agendamento.disciplina}</p>
+              
+              {/* EXIBIÇÃO DE DISCIPLINA E MÓDULO */}
+              {(agendamento?.disciplina || agendamento?.modulo) && (
+                <p className="text-gray-500 font-medium">
+                  {agendamento.disciplina} {agendamento.modulo ? `• ${agendamento.modulo}` : ''}
+                </p>
               )}
+
               {agendamento?.consultorio && (
                 <p className="text-gray-500 font-medium">{agendamento.consultorio}</p>
               )}

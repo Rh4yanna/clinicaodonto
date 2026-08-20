@@ -9,7 +9,7 @@ const INITIAL_CONTROLE = [
   {
     id: '1',
     autoclave: '01',
-    ciclo: '2548',
+    lote: '2548',
     dataInicio: '20/05/2026 - 12:30',
     dataResultado: '20/05/2026 - 17:30',
     status: 'Em incubação',
@@ -17,7 +17,7 @@ const INITIAL_CONTROLE = [
   {
     id: '2',
     autoclave: '02',
-    ciclo: '2550',
+    lote: '2550',
     dataInicio: '20/05/2026 - 11:50',
     dataResultado: '21/05/2026 - 11:50',
     status: 'Em incubação',
@@ -25,7 +25,7 @@ const INITIAL_CONTROLE = [
   {
     id: '3',
     autoclave: '03',
-    ciclo: '2547',
+    lote: '2547',
     dataInicio: '19/05/2026 - 14:40',
     dataResultado: '20/05/2026 - 10:00',
     status: 'Concluído',
@@ -33,7 +33,7 @@ const INITIAL_CONTROLE = [
   {
     id: '4',
     autoclave: '01',
-    ciclo: '2546',
+    lote: '2546',
     dataInicio: '19/05/2026 - 09:30',
     lidoEm: '20/05/2026 - 09:00',
     resultadoFinal: 'Satisfatório',
@@ -177,7 +177,7 @@ export default function ControleBiologicoProfessor() {
                 {/* Informações */}
                 <div className="flex-1 space-y-1">
                   <h4 className="font-bold text-[#3B42B2] text-sm">
-                    Autoclave {item.autoclave} - Ciclo {item.ciclo}
+                    Autoclave {item.autoclave} - Lote {item.lote}
                   </h4>
                   
                   <p className="text-[10px] text-slate-500 font-medium">

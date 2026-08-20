@@ -20,7 +20,7 @@ export default function DetalhesPacoteCme() {
     validade: '27/08/2026',
     autoclave: '01',
     responsavel: 'Vitória Taques',
-    ciclo: '2549',
+    lote: '2549',
     status: 'Valido' // 'Valido' | 'Vencido' | 'UsoRegistrado'
   });
 
@@ -196,8 +196,8 @@ export default function DetalhesPacoteCme() {
               </div>
 
               <div>
-                <dt className="font-extrabold text-slate-800">Ciclo:</dt>
-                <dd className="text-slate-600 font-semibold">{pacote.ciclo}</dd>
+                <dt className="font-extrabold text-slate-800">Lote:</dt>
+                <dd className="text-slate-600 font-semibold">{pacote.lote}</dd>
               </div>
 
               <div>
