@@ -1,5 +1,5 @@
-import React, { useState, useEffect, useCallback } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useState, useEffect, useCallback } from 'react';
+import { useNavigate, useLocation } from 'react-router-dom';
 import {
   ArrowLeft,
   ChevronLeft,
@@ -15,6 +15,13 @@ import api from '../../Services/api';
 
 export default function AgendaAluno() {
   const navigate = useNavigate();
+  const location = useLocation();
+  const consultaNotificada = new URLSearchParams(location.search).get('consulta');
+  useEffect(() => {
+    if (!consultaNotificada) return;
+    api.get(`/consultas/${consultaNotificada}`).then(res => setDataSelecionada(new Date(res.data.data_hora)))
+      .catch(() => setErro('Não foi possível abrir a consulta da notificação.'));
+  }, [consultaNotificada]);
 
   // Estados da API e UI
   const [agendamentos, setAgendamentos] = useState([]);
@@ -29,18 +36,16 @@ export default function AgendaAluno() {
   // Estados de Data
   const [dataSelecionada, setDataSelecionada] = useState(new Date());
 
-  // Lista de Disciplinas disponíveis para filtro
-  const listaDisciplinas = [
-    'Todas as disciplinas',
-    'Dentística',
-    'Endodontia',
-    'Periodontia',
-    'Ortodontia',
-    'Odontopediatria',
-    'Cirurgia Bucal',
-    'Prótese',
-    'Reabilitação Bucal'
-  ];
+  // Disciplinas vindas do backend (GET /consultas/disciplinas). Antes esta
+  // lista era escrita à mão aqui, mas o filtro nunca funcionava porque a
+  // coluna consulta.disciplina não existia — recriada na migration 012.
+  const [listaDisciplinas, setListaDisciplinas] = useState(['Todas as disciplinas']);
+
+  useEffect(() => {
+    api.get('/consultas/disciplinas')
+      .then((res) => setListaDisciplinas(['Todas as disciplinas', ...res.data]))
+      .catch((err) => console.error('Erro ao carregar disciplinas:', err));
+  }, []);
 
   // Helper para formatar data local no padrão YYYY-MM-DD
   const formatarDataIso = (date) => {
@@ -50,46 +55,50 @@ export default function AgendaAluno() {
     return `${ano}-${mes}-${dia}`;
   };
 
-  // Busca os agendamentos da API filtrados pela data selecionada
+  // O backend não filtra por data, então buscamos tudo e separamos aqui
+  // pelo dia selecionado. A disciplina agora vem do próprio registro.
   const carregarAgendamentos = useCallback(async () => {
     try {
       setCarregando(true);
       setErro('');
       const dataFormatada = formatarDataIso(dataSelecionada);
 
-      // Chamada API (Ajuste o endpoint se necessário, ex: /agendamentos/aluno ou com params)
-      const resposta = await api.get('/agendamentos', {
-        params: { data: dataFormatada }
+      const [consultasRes, pacientesRes] = await Promise.all([
+        api.get('/consultas'),
+        api.get('/pacientes'),
+      ]);
+
+      const nomePorPacienteId = {};
+      pacientesRes.data.forEach((p) => { nomePorPacienteId[p.id] = p.nome; });
+
+      const doDia = consultasRes.data.filter(
+        (c) => formatarDataIso(new Date(c.data_hora)) === dataFormatada
+      );
+
+      // Agrupa por disciplina real. Consultas antigas, agendadas antes de
+      // a coluna existir, caem em "Sem disciplina" em vez de sumir.
+      const porDisciplina = new Map();
+      doDia.forEach((item) => {
+        const chave = item.disciplina || 'Sem disciplina';
+        if (!porDisciplina.has(chave)) porDisciplina.set(chave, []);
+        porDisciplina.get(chave).push({
+          id: item.id,                    // id da CONSULTA
+          pacienteId: item.paciente_id,   // id do PACIENTE — são coisas diferentes
+          hora: new Date(item.data_hora).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }),
+          nome: nomePorPacienteId[item.paciente_id] || 'Paciente sem nome',
+          procedimento: item.queixa_principal || 'Consulta',
+          dadosOriginais: item
+        });
       });
 
-      const dados = resposta.data || [];
-
-      // Se a API retornar a lista crua de agendamentos, agrupamos por disciplina
-      if (Array.isArray(dados)) {
-        const agrupado = dados.reduce((acc, item) => {
-          const nomeDisciplina = item.disciplina || item.disciplinaNome || 'Geral';
-          let grupo = acc.find((g) => g.disciplina === nomeDisciplina);
-
-          if (!grupo) {
-            grupo = { disciplina: nomeDisciplina, pacientes: [] };
-            acc.push(grupo);
-          }
-
-          grupo.pacientes.push({
-            id: item.id || item._id,
-            hora: item.hora || item.horario || '00:00',
-            nome: item.pacienteNome || item.paciente?.nome || 'Paciente sem nome',
-            procedimento: item.procedimento || item.tipoProcedimento || 'Consulta',
-            dadosOriginais: item
-          });
-
-          return acc;
-        }, []);
-
-        setAgendamentos(agrupado);
-      } else {
-        setAgendamentos([]);
-      }
+      setAgendamentos(
+        [...porDisciplina.entries()]
+          .sort(([a], [b]) => a.localeCompare(b, 'pt-BR'))
+          .map(([disciplina, pacientes]) => ({
+            disciplina,
+            pacientes: pacientes.sort((a, b) => a.hora.localeCompare(b.hora)),
+          }))
+      );
     } catch (err) {
       console.error('Erro ao buscar agendamentos:', err);
       setErro('Falha ao carregar agendamentos do dia.');
@@ -326,7 +335,12 @@ export default function AgendaAluno() {
                               <button
                                 onClick={() => {
                                   setMenuAbertoId(null);
-                                  navigate('/app/aluno/pacientes/detalhes', { state: { paciente } });
+                                  // Passava o item do agendamento inteiro, cujo "id" é o da
+                                  // consulta — a tela de paciente usava esse número para
+                                  // buscar e abria o cadastro de outra pessoa.
+                                  navigate('/app/aluno/pacientes/detalhes', {
+                                    state: { paciente: { id: paciente.pacienteId, nome: paciente.nome } },
+                                  });
                                 }}
                                 className="w-full text-left px-3 py-1.5 text-[10px] font-bold text-slate-700 hover:bg-slate-50 transition cursor-pointer"
                               >

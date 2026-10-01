@@ -1,10 +1,15 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Calendar as CalendarIcon, Bell, CheckCircle2, AlertCircle, XCircle, RefreshCw, Loader2 } from 'lucide-react';
+import { consultaConfirmada } from '../utils/agenda';
 import api from '../Services/api'; // Caminho ajustado para a pasta Services
+import { useAuth } from '../context/auth';
+import { useContagemNaoLidas } from '../hooks/useNotificacoes';
 
 export default function DashboardRecepcao() {
   const navigate = useNavigate();
+  const { usuario } = useAuth();
+  const { total: totalNaoLidas } = useContagemNaoLidas();
   const [dataAtual, setDataAtual] = useState('');
   
   // Estados dos Dados da API
@@ -15,6 +20,7 @@ export default function DashboardRecepcao() {
   // Estados de Controle de UI
   const [carregando, setCarregando] = useState(true);
   const [atualizando, setAtualizando] = useState(false);
+  const [erro, setErro] = useState('');
 
   const obterDataFormatada = () => {
     const data = new Date();
@@ -27,64 +33,52 @@ export default function DashboardRecepcao() {
     return `Hoje, ${partes.join(' de ')}`;
   };
 
-  // Função para buscar dados do backend no Railway
+  // O backend não tem uma rota de "resumo do dia" para a recepção
+  // (o /dashboard/resumo é exclusivo de coordenador/aluno) — então
+  // buscamos as consultas de hoje direto em /consultas e calculamos
+  // os números aqui no front.
   const carregarDadosDashboard = useCallback(async (isManual = false) => {
     if (isManual) setAtualizando(true);
-    
-    try {
-      // Data de hoje no formato YYYY-MM-DD para filtragem exata
-      const hojeIso = new Date().toISOString().split('T')[0];
 
-      // Recomposição de chamadas paralelas para otimização
-      const [resumoRes, agendamentosRes] = await Promise.allSettled([
-        api.get('/agendamentos/resumo-dia', { params: { data: hojeIso } }),
-        api.get('/agendamentos', { params: { data: hojeIso } })
+    try {
+      setDataAtual(obterDataFormatada());
+      const hojeStr = new Date().toDateString();
+
+      const [consultasRes, pacientesRes] = await Promise.all([
+        api.get('/consultas'),
+        api.get('/pacientes'),
       ]);
 
-      // Tratamento dos Agendamentos do dia
-      if (agendamentosRes.status === 'fulfilled') {
-        const agendamentos = agendamentosRes.value.data || [];
-        
-        // Separação por status
-        const aguardando = agendamentos.filter(a => 
-          (a.status || '').toLowerCase() === 'aguardando'
-        );
-        const pendentes = agendamentos.filter(a => 
-          (a.status || '').toLowerCase() === 'pendente'
-        );
+      const nomePorPacienteId = {};
+      pacientesRes.data.forEach((p) => { nomePorPacienteId[p.id] = p.nome; });
 
-        setPacientesAguardando(aguardando);
-        setConfirmacoesPendentes(pendentes);
+      const consultasHoje = consultasRes.data
+        .filter((c) => new Date(c.data_hora).toDateString() === hojeStr)
+        .map((c) => ({
+          id: c.id,
+          hora: new Date(c.data_hora).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }),
+          pacienteNome: nomePorPacienteId[c.paciente_id] || 'Paciente sem nome',
+          tipoConsulta: c.queixa_principal || 'Consulta',
+          status: c.status,
+          disciplina: c.disciplina,
+        }));
 
-        // Caso a rota /resumo-dia não exista no backend, calcula dinamicamente
-        if (resumoRes.status !== 'fulfilled') {
-          const confirmadasCount = agendamentos.filter(a => 
-            ['confirmada', 'confirmado', 'atendido'].includes((a.status || '').toLowerCase())
-          ).length;
-          const pendentesCount = pendentes.length;
-          const faltasCount = agendamentos.filter(a => 
-            ['falta', 'cancelada', 'cancelado'].includes((a.status || '').toLowerCase())
-          ).length;
+      consultasHoje.sort((a, b) => a.hora.localeCompare(b.hora));
+      setErro('');
+      const aguardando = consultasHoje.filter((c) => c.status === 'aguardando' || c.status === 'em_atendimento');
+      const pendentes = consultasHoje.filter((c) => c.status === 'agendada');
 
-          setResumo({
-            confirmadas: confirmadasCount,
-            pendentes: pendentesCount,
-            faltas: faltasCount
-          });
-        }
-      }
+      setPacientesAguardando(aguardando);
+      setConfirmacoesPendentes(pendentes);
 
-      // Tratamento do Resumo retornado da API (se rota dedicada existir)
-      if (resumoRes.status === 'fulfilled' && resumoRes.value.data) {
-        setResumo({
-          confirmadas: resumoRes.value.data.confirmadas || 0,
-          pendentes: resumoRes.value.data.pendentes || 0,
-          faltas: resumoRes.value.data.faltas || 0
-        });
-      }
+      setResumo({
+        confirmadas: consultasHoje.filter((c) => consultaConfirmada(c.status)).length,
+        pendentes: pendentes.length,
+        faltas: consultasHoje.filter((c) => c.status === 'cancelada' || c.status === 'faltou').length,
+      });
 
-    } catch (err) {
-      console.error('Erro ao carregar painel da recepção:', err);
+    } catch {
+      setErro('Não foi possível atualizar os dados do banco. Use Atualizar dados para tentar novamente.');
     } finally {
       setCarregando(false);
       setAtualizando(false);
@@ -128,9 +122,18 @@ export default function DashboardRecepcao() {
           </div>
 
           {/* Notificações */}
-          <button className="p-2.5 bg-gray-50 text-gray-600 hover:text-[#3B44A8] hover:bg-gray-100 rounded-xl transition relative">
+          <button
+            type="button"
+            onClick={() => navigate('/app/recepcao/notificacoes')}
+            className="p-2.5 bg-gray-50 text-gray-600 hover:text-[#3B44A8] hover:bg-gray-100 rounded-xl transition relative"
+            aria-label="Notificações"
+          >
             <Bell size={20} />
-            <span className="absolute top-2.5 right-2.5 w-2 h-2 bg-red-500 rounded-full"></span>
+            {/* O ponto vermelho era fixo no HTML — agora só aparece quando
+                existe notificação não lida de verdade. */}
+            {totalNaoLidas > 0 && (
+              <span className="absolute top-2.5 right-2.5 w-2 h-2 bg-red-500 rounded-full" />
+            )}
           </button>
         </div>
       </header>
@@ -140,10 +143,12 @@ export default function DashboardRecepcao() {
         
         {/* Boas-Vindas */}
         <div className="select-none">
-          <h2 className="text-gray-900 text-3xl font-black tracking-tight leading-none">Olá, Rhay</h2>
+          <h2 className="text-gray-900 text-3xl font-black tracking-tight leading-none">Olá, {usuario?.nome?.split(' ')[0] || 'Recepção'}</h2>
           <p className="text-gray-500 text-sm font-medium mt-1.5">Gerenciamento e fluxo da recepção da clínica.</p>
         </div>
 
+        {erro && <div role="alert" className="p-4 bg-red-50 text-red-700 rounded-xl">{erro}</div>}
+        {!erro && <>
         {/* CONSULTAS DO DIA */}
         <section className="bg-white border border-gray-200 rounded-2xl p-6 shadow-sm select-none">
           <h3 className="text-gray-900 font-extrabold text-sm mb-4 tracking-wide uppercase">Consultas do Dia</h3>
@@ -228,7 +233,7 @@ export default function DashboardRecepcao() {
                     </div>
                     <div className="ml-4">
                       <span className="inline-block bg-amber-100 text-amber-700 text-[10px] font-bold px-3 py-1 rounded-full whitespace-nowrap">
-                        Aguardando
+                        {p.status === 'em_atendimento' ? 'Em atendimento' : 'Aguardando'}
                       </span>
                     </div>
                   </div>
@@ -292,6 +297,7 @@ export default function DashboardRecepcao() {
 
         </div>
 
+        </>}
       </div>
     </div>
   );

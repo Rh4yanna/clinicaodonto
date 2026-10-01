@@ -1,25 +1,39 @@
 import { useState, useEffect, useRef } from 'react';
-import { useNavigate, useLocation } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { 
   ArrowLeft, User, Calendar, Clock, ChevronRight, 
   Stethoscope, RefreshCw, Wrench, Scissors, Search, 
   UserPlus, Loader2, CheckCircle2, AlertCircle 
 } from 'lucide-react';
-import api from '../Services/api';
+import api from '../Services/api'; // Ajustado para subir uma pasta e usar 'Services' com S maiúsculo
 
 export default function AgendarConsulta() {
   const navigate = useNavigate();
-  const location = useLocation();
   const buscaRef = useRef(null);
 
   // Estados do formulário
   const [disciplina, setDisciplina] = useState('');
+  // Lista vinda do backend. Antes era escrita à mão aqui e divergia: tinha
+  // "Cirurgia" (o nome real é "Cirurgia Bucal") e faltavam Ortodontia,
+  // Prótese e Reabilitação Bucal.
+  const [disciplinas, setDisciplinas] = useState([]);
   const [tipoConsulta, setTipoConsulta] = useState('Avaliação');
-  const [profissional, setProfissional] = useState('');
-  const [aluno, setAluno] = useState('');
+  const [usuarioId, setUsuarioId] = useState('');
+  const [profissionais, setProfissionais] = useState([]);
   const [data, setData] = useState('');
   const [hora, setHora] = useState('');
   const [observacoes, setObservacoes] = useState('');
+
+  // Carrega coordenadores e alunos disponíveis para vincular à consulta
+  // (o backend exige um usuario_id real, não um nome digitado)
+  useEffect(() => {
+    api.get('/usuarios/profissionais', { params: { ativo: 'true' } })
+      .then((res) => {
+        const responsaveis = res.data.filter((u) => ['coordenador', 'professor'].includes(u.perfil));
+        setProfissionais(responsaveis);
+      })
+      .catch(() => setErro('Não foi possível carregar os responsáveis. Recarregue a página.'));
+  }, []);
 
   // Estados de busca de pacientes
   const [termoBusca, setTermoBusca] = useState('');
@@ -33,56 +47,44 @@ export default function AgendarConsulta() {
   const [mensagemSucesso, setMensagemSucesso] = useState('');
   const [erro, setErro] = useState('');
 
-  // Captura o paciente novo criado se tiver retornado da tela de cadastro
+  // O backend não tem busca por nome/cpf via query — trazemos todos os
+  // pacientes uma vez e filtramos aqui no front a cada tecla digitada.
+  const [todosPacientes, setTodosPacientes] = useState([]);
+
   useEffect(() => {
-    if (location.state?.pacienteNovo) {
-      const novo = location.state.pacienteNovo;
-      setPacienteSelecionado({
-        id: novo.id || novo._id,
-        nome: novo.nome,
-        cpf: novo.cpf || 'Sem CPF',
-        status: novo.status || 'Ativo'
-      });
-    }
-  }, [location.state]);
+    api.get('/consultas/disciplinas')
+      .then((res) => setDisciplinas(res.data))
+      .catch(() => setErro('Não foi possível carregar as disciplinas. Recarregue a página.'));
+  }, []);
 
-  // Busca dinamicamente os pacientes na API
   useEffect(() => {
-    const buscarPacientesAPI = async () => {
-      if (termoBusca.trim().length === 0) {
-        setPacientesFiltrados([]);
-        return;
-      }
-
-      setBuscandoPacientes(true);
-      try {
-        const response = await api.get('/pacientes', {
-          params: { busca: termoBusca }
-        });
-
-        const lista = response.data.map(p => ({
-          id: p.id || p._id,
+    api.get('/pacientes')
+      .then((res) => {
+        setTodosPacientes(res.data.map((p) => ({
+          id: p.id,
           nome: p.nome,
           cpf: p.cpf || 'Sem CPF',
-          status: p.status || 'Ativo'
-        }));
+          status: 'Ativo'
+        })));
+      })
+      .catch(() => setErro('Não foi possível carregar os pacientes. Recarregue a página.'));
+  }, []);
 
-        setPacientesFiltrados(lista);
-      } catch (err) {
-        console.error('Erro ao buscar pacientes:', err);
-      } finally {
-        setBuscandoPacientes(false);
-      }
-    };
+  useEffect(() => {
+    if (termoBusca.trim().length === 0) {
+      setPacientesFiltrados([]);
+      return;
+    }
+    setBuscandoPacientes(true);
+    const termo = termoBusca.trim().toLowerCase();
+    const resultado = todosPacientes.filter((p) =>
+      p.nome.toLowerCase().includes(termo) || (p.cpf || '').includes(termo)
+    );
+    setPacientesFiltrados(resultado);
+    setBuscandoPacientes(false);
+  }, [termoBusca, todosPacientes]);
 
-    const timer = setTimeout(() => {
-      if (termoBusca) buscarPacientesAPI();
-    }, 300);
-
-    return () => clearTimeout(timer);
-  }, [termoBusca]);
-
-  // Fecha o dropdown ao clicar fora
+  // Fecha o dropdown ao clicar fora do campo
   useEffect(() => {
     function handleClickOutside(event) {
       if (buscaRef.current && !buscaRef.current.contains(event.target)) {
@@ -93,11 +95,21 @@ export default function AgendarConsulta() {
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
+  // Submissão do agendamento para a API
   const handleSubmit = async (e) => {
     e.preventDefault();
+    if (enviando || mensagemSucesso) return;
 
     if (!pacienteSelecionado) {
       setErro('Por favor, selecione um paciente.');
+      return;
+    }
+    if (!usuarioId) {
+      setErro('Selecione o professor ou coordenador responsável pela disciplina.');
+      return;
+    }
+    if (!data || !hora) {
+      setErro('Informe a data e o horário da consulta.');
       return;
     }
 
@@ -107,20 +119,18 @@ export default function AgendarConsulta() {
 
     try {
       const payload = {
-        pacienteId: pacienteSelecionado.id,
-        pacienteNome: pacienteSelecionado.nome,
-        disciplina,
-        tipoConsulta,
-        procedimento: tipoConsulta,
-        profissional,
-        aluno,
-        data,
-        hora,
+        paciente_id: pacienteSelecionado.id,
+        usuario_id: Number(usuarioId),
+        data_hora: `${data}T${hora}:00`,
+        // A disciplina agora tem coluna própria (migration 012); antes era
+        // grudada no texto da queixa, gerando coisas como "Cirurgia — Cirurgia".
+        disciplina: disciplina || undefined,
+        queixa_principal: tipoConsulta,
         observacoes,
-        status: 'AGENDADO'
+        status: 'agendada'
       };
 
-      await api.post('/agendamentos', payload);
+      await api.post('/consultas', payload);
 
       setMensagemSucesso('Consulta agendada com sucesso!');
       
@@ -141,17 +151,18 @@ export default function AgendarConsulta() {
     <div className="p-6 max-w-2xl mx-auto space-y-6 select-none font-sans">
       {/* Cabeçalho */}
       <div className="flex items-center gap-4 text-[#3B44A8]">
-        <button onClick={() => navigate(-1)} className="p-2 hover:bg-gray-100 rounded-full transition cursor-pointer">
+        <button onClick={() => navigate(-1)} className="p-2 hover:bg-gray-100 rounded-full transition">
           <ArrowLeft size={24} />
         </button>
         <h1 className="text-xl font-black">Agendar Consulta</h1>
       </div>
 
-      {/* Busca de Paciente */}
+      {/* ÁREA SELECIONAR / BUSCAR PACIENTE */}
       <div className="space-y-2" ref={buscaRef}>
         <label className="text-sm font-black text-[#3B44A8]">Paciente *</label>
         
         {!pacienteSelecionado ? (
+          /* INPUT DE BUSCA QUANDO NÃO HÁ PACIENTE SELECIONADO */
           <div className="relative">
             <div className="flex gap-3">
               <div className="relative flex-1">
@@ -169,16 +180,18 @@ export default function AgendarConsulta() {
                 <Search size={18} className="absolute left-4 top-4 text-gray-400" />
               </div>
 
+              {/* BOTÃO ADICIONAR NOVO PACIENTE */}
               <button 
                 type="button"
                 onClick={() => navigate('/app/recepcao/pacientes/cadastro')}
-                className="bg-white border border-dashed border-gray-300 hover:border-[#3B44A8] hover:bg-blue-50/30 text-gray-600 hover:text-[#3B44A8] font-bold text-xs px-4 rounded-xl flex items-center gap-2 transition-all shrink-0 shadow-sm cursor-pointer"
+                className="bg-white border border-dashed border-gray-300 hover:border-[#3B44A8] hover:bg-blue-50/30 text-gray-600 hover:text-[#3B44A8] font-bold text-xs px-4 rounded-xl flex items-center gap-2 transition-all shrink-0 shadow-sm"
               >
                 <UserPlus size={16} />
                 Adicionar paciente
               </button>
             </div>
 
+            {/* DROPDOWN DE RESULTADOS DA BUSCA */}
             {mostrarDropdown && termoBusca.length > 0 && (
               <div className="absolute left-0 right-0 mt-1.5 bg-white border border-gray-200 rounded-xl shadow-xl z-50 max-h-48 overflow-y-auto divide-y divide-gray-50">
                 {buscandoPacientes ? (
@@ -194,7 +207,7 @@ export default function AgendarConsulta() {
                         setPacienteSelecionado(paciente);
                         setMostrarDropdown(false);
                       }}
-                      className="w-full text-left p-3 hover:bg-gray-50 flex items-center justify-between transition-colors cursor-pointer"
+                      className="w-full text-left p-3 hover:bg-gray-50 flex items-center justify-between transition-colors"
                     >
                       <div>
                         <p className="text-sm font-bold text-gray-800">{paciente.nome}</p>
@@ -216,6 +229,7 @@ export default function AgendarConsulta() {
             )}
           </div>
         ) : (
+          /* CARD DE PACIENTE SELECIONADO */
           <div className="bg-white border border-[#3B44A8] ring-1 ring-[#3B44A8]/20 bg-blue-50/10 rounded-2xl p-4 flex items-center justify-between shadow-sm">
             <div className="flex items-center gap-3">
               <div className="w-12 h-12 bg-white rounded-full border border-gray-200 flex items-center justify-center text-gray-500 shrink-0">
@@ -243,15 +257,19 @@ export default function AgendarConsulta() {
                   setPacienteSelecionado(null);
                   setTermoBusca('');
                 }} 
-                className="text-xs text-red-500 hover:underline font-bold cursor-pointer"
+                className="text-xs text-red-500 hover:underline font-bold"
               >
                 Alterar
               </button>
               <span className="w-px h-4 bg-gray-200" />
               <button 
                 type="button" 
-                onClick={() => navigate(`/app/recepcao/pacientes/${pacienteSelecionado.id}`)}
-                className="text-[#3B44A8] text-xs font-bold flex items-center gap-0.5 hover:underline cursor-pointer"
+                onClick={() =>
+                  navigate('/app/recepcao/pacientes/detalhes', {
+                    state: { paciente: pacienteSelecionado },
+                  })
+                }
+                className="text-[#3B44A8] text-xs font-bold flex items-center gap-0.5 hover:underline"
               >
                 Ver histórico <ChevronRight size={14} />
               </button>
@@ -260,9 +278,10 @@ export default function AgendarConsulta() {
         )}
       </div>
 
-      {/* Formulário */}
+      {/* FORMULÁRIO COMPLETO */}
       <form onSubmit={handleSubmit} className="bg-white border border-gray-200 rounded-2xl p-6 space-y-5 shadow-sm">
         
+        {/* Alertas de Erro ou Sucesso */}
         {erro && (
           <div className="p-3 bg-red-50 border border-red-200 text-red-600 text-xs rounded-xl flex items-center gap-2 font-medium">
             <AlertCircle size={16} className="shrink-0" />
@@ -277,6 +296,7 @@ export default function AgendarConsulta() {
           </div>
         )}
 
+        {/* Disciplina */}
         <div className="space-y-1.5">
           <label className="text-sm font-black text-[#3B44A8]">Disciplina *</label>
           <select 
@@ -286,14 +306,13 @@ export default function AgendarConsulta() {
             className="w-full bg-white border border-gray-200 rounded-xl p-3 text-sm font-medium text-gray-700 focus:outline-none focus:border-[#3B44A8]"
           >
             <option value="">Selecione uma disciplina</option>
-            <option value="Periodontia">Periodontia</option>
-            <option value="Endodontia">Endodontia</option>
-            <option value="Dentística">Dentística</option>
-            <option value="Odontopediatria">Odontopediatria</option>
-            <option value="Cirurgia">Cirurgia</option>
+            {disciplinas.map((d) => (
+              <option key={d} value={d}>{d}</option>
+            ))}
           </select>
         </div>
 
+        {/* Tipo de Consulta */}
         <div className="space-y-2">
           <label className="text-sm font-black text-[#3B44A8]">Tipo de consulta</label>
           <div className="grid grid-cols-2 gap-3">
@@ -307,7 +326,7 @@ export default function AgendarConsulta() {
                 key={tipo.id}
                 type="button"
                 onClick={() => setTipoConsulta(tipo.id)}
-                className={`p-3 border rounded-xl flex items-start gap-3 text-left transition-all cursor-pointer ${
+                className={`p-3 border rounded-xl flex items-start gap-3 text-left transition-all ${
                   tipoConsulta === tipo.id 
                     ? 'border-[#3B44A8] bg-blue-50/50 ring-1 ring-[#3B44A8]' 
                     : 'border-gray-200 hover:bg-gray-50'
@@ -325,34 +344,26 @@ export default function AgendarConsulta() {
           </div>
         </div>
 
+        {/* Profissional / Aluno responsável */}
         <div className="space-y-1.5">
-          <label className="text-sm font-black text-[#3B44A8]">Profissional / Aluno</label>
-          <div className="grid grid-cols-2 gap-3">
-            <div>
-              <span className="text-[11px] font-bold text-gray-500 block mb-1">Profissional responsável *</span>
-              <input 
-                type="text" 
-                placeholder="Nome do profissional" 
-                value={profissional}
-                onChange={(e) => setProfissional(e.target.value)}
-                required
-                className="w-full border border-gray-200 rounded-xl p-3 text-sm focus:outline-none focus:border-[#3B44A8]" 
-              />
-            </div>
-            <div>
-              <span className="text-[11px] font-bold text-gray-500 block mb-1">Aluno responsável *</span>
-              <input 
-                type="text" 
-                placeholder="Nome do aluno" 
-                value={aluno}
-                onChange={(e) => setAluno(e.target.value)}
-                required
-                className="w-full border border-gray-200 rounded-xl p-3 text-sm focus:outline-none focus:border-[#3B44A8]" 
-              />
-            </div>
-          </div>
+          <label className="text-sm font-black text-[#3B44A8]">Professor / Coordenador responsável pela disciplina *</label>
+          <select
+            aria-label="Professor ou coordenador responsável"
+            value={usuarioId}
+            onChange={(e) => setUsuarioId(e.target.value)}
+            required
+            className="w-full bg-white border border-gray-200 rounded-xl p-3 text-sm font-medium text-gray-700 focus:outline-none focus:border-[#3B44A8]"
+          >
+            <option value="">Selecione o responsável pela disciplina</option>
+            {profissionais.map((p) => (
+              <option key={p.id} value={p.id}>
+                {p.nome} ({p.perfil === 'coordenador' ? 'Coordenador' : p.perfil === 'professor' ? 'Professor' : 'Aluno'})
+              </option>
+            ))}
+          </select>
         </div>
 
+        {/* Data e Horário */}
         <div className="space-y-1.5">
           <label className="text-sm font-black text-[#3B44A8]">Data e horário *</label>
           <div className="grid grid-cols-2 gap-3">
@@ -379,6 +390,7 @@ export default function AgendarConsulta() {
           </div>
         </div>
 
+        {/* Observações */}
         <div className="space-y-1.5">
           <label className="text-sm font-black text-[#3B44A8]">Observações</label>
           <textarea 
@@ -390,6 +402,7 @@ export default function AgendarConsulta() {
           />
         </div>
 
+        {/* Botão de Ação */}
         <button 
           type="submit"
           disabled={!pacienteSelecionado || enviando}

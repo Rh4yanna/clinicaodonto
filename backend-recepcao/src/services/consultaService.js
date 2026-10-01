@@ -1,0 +1,216 @@
+// Regras da agenda de consultas.
+
+const consultaRepository = require('../repositories/consultaRepository');
+const pacienteRepository = require('../repositories/pacienteRepository');
+const materialRepository = require('../repositories/materialRepository');
+const auditLogger = require('../utils/auditLogger');
+// Quem recebe cada notificação está definido em utils/notificarEventos.js.
+const eventos = require('../utils/notificarEventos');
+
+function formatarDataHora(valor) {
+  const data = new Date(valor);
+  if (Number.isNaN(data.getTime())) return '';
+  return data.toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' });
+}
+
+// Cobre os estados do protótipo: confirmações pendentes, confirmadas,
+// paciente aguardando, em atendimento e faltas.
+const STATUS_VALIDOS = [
+  'agendada', 'confirmada', 'aguardando', 'em_atendimento',
+  'realizada', 'cancelada', 'faltou',
+];
+
+// Disciplinas da clínica-escola. Precisa bater exatamente com a constraint
+// chk_consulta_disciplina (migration 012) — por isso o front busca esta
+// lista pela API (GET /consultas/disciplinas) em vez de repetir os nomes.
+const DISCIPLINAS_VALIDAS = [
+  'Dentística', 'Endodontia', 'Periodontia', 'Ortodontia',
+  'Odontopediatria', 'Cirurgia Bucal', 'Prótese', 'Reabilitação Bucal',
+];
+
+function listarDisciplinas() {
+  return DISCIPLINAS_VALIDAS;
+}
+
+async function listar(filtros = {}) {
+  if (filtros.status && !STATUS_VALIDOS.includes(filtros.status)) {
+    throw { status: 400, message: `Status inválido. Use um de: ${STATUS_VALIDOS.join(', ')}` };
+  }
+  if (filtros.disciplina && !DISCIPLINAS_VALIDAS.includes(filtros.disciplina)) {
+    throw { status: 400, message: `Disciplina inválida. Use uma de: ${DISCIPLINAS_VALIDAS.join(', ')}` };
+  }
+  return consultaRepository.listar(filtros);
+}
+
+async function buscarPorId(id) {
+  const consulta = await consultaRepository.buscarPorId(id);
+  if (!consulta) throw { status: 404, message: 'Consulta não encontrada' };
+  return consulta;
+}
+
+async function validarResponsavel(id) {
+  const usuario = await require('../repositories/usuarioRepository').buscarPorId(id);
+  if (!usuario || usuario.ativo === false || !['professor', 'coordenador'].includes(usuario.perfil)) {
+    throw { status: 400, message: 'Selecione um professor ou coordenador ativo como responsável pela disciplina.' };
+  }
+  return usuario;
+}
+
+async function criar(dados) {
+  const { paciente_id, usuario_id, data_hora } = dados;
+
+  // Regra: campos obrigatórios
+  if (!paciente_id || !usuario_id || !data_hora) {
+    throw { status: 400, message: 'Paciente, usuário e data/hora são obrigatórios' };
+  }
+
+  // Regra: data/hora precisa ser válida
+  if (Number.isNaN(new Date(data_hora).getTime())) {
+    throw { status: 400, message: 'Data/hora inválida' };
+  }
+
+  // Regra: status, se informado, precisa ser um dos valores aceitos
+  if (dados.status && !STATUS_VALIDOS.includes(dados.status)) {
+    throw { status: 400, message: `Status inválido. Use um de: ${STATUS_VALIDOS.join(', ')}` };
+  }
+
+  // Regra: disciplina, se informada, precisa existir na lista da clínica
+  if (dados.disciplina && !DISCIPLINAS_VALIDAS.includes(dados.disciplina)) {
+    throw { status: 400, message: `Disciplina inválida. Use uma de: ${DISCIPLINAS_VALIDAS.join(', ')}` };
+  }
+
+  // Regra: paciente precisa existir
+  const paciente = await pacienteRepository.buscarPorId(paciente_id);
+  if (!paciente) throw { status: 404, message: 'Paciente não encontrado' };
+
+  await validarResponsavel(usuario_id);
+  if (!dados.disciplina) throw { status: 400, message: 'Disciplina é obrigatória.' };
+  const consulta = await consultaRepository.criar(dados);
+  auditLogger.info('Consulta agendada', { consulta_id: consulta.id, paciente_id, usuario_id });
+
+
+  return consulta;
+}
+
+async function atualizar(id, dados) {
+  const consulta = await consultaRepository.buscarPorId(id);
+  if (!consulta) throw { status: 404, message: 'Consulta não encontrada' };
+
+  if (dados.status && !STATUS_VALIDOS.includes(dados.status)) {
+    throw { status: 400, message: `Status inválido. Use um de: ${STATUS_VALIDOS.join(', ')}` };
+  }
+
+  if (dados.disciplina && !DISCIPLINAS_VALIDAS.includes(dados.disciplina)) {
+    throw { status: 400, message: `Disciplina inválida. Use uma de: ${DISCIPLINAS_VALIDAS.join(', ')}` };
+  }
+
+  if (dados.paciente_id) {
+    const paciente = await pacienteRepository.buscarPorId(dados.paciente_id);
+    if (!paciente) throw { status: 404, message: 'Paciente não encontrado' };
+  }
+
+  if (dados.usuario_id && String(dados.usuario_id) !== String(consulta.usuario_id)) await validarResponsavel(dados.usuario_id);
+  const dadosAtualizados = {
+    paciente_id: dados.paciente_id ?? consulta.paciente_id,
+    usuario_id: dados.usuario_id ?? consulta.usuario_id,
+    data_hora: dados.data_hora ?? consulta.data_hora,
+    queixa_principal: dados.queixa_principal ?? consulta.queixa_principal,
+    observacoes: dados.observacoes ?? consulta.observacoes,
+    status: dados.status ?? consulta.status,
+    disciplina: dados.disciplina ?? consulta.disciplina,
+  };
+
+  const atualizada = await consultaRepository.atualizar(id, dadosAtualizados);
+  if (dados.status === 'cancelada') {
+    auditLogger.warn('Consulta cancelada', { consulta_id: id });
+    await eventos.consultaCancelada(dadosAtualizados.usuario_id, {
+      quandoFormatado: formatarDataHora(dadosAtualizados.data_hora),
+      consultaId: id,
+    });
+  } else if (dados.status === 'faltou') {
+    auditLogger.warn('Falta registrada', { consulta_id: id });
+  } else if (dados.status === 'realizada') {
+    auditLogger.info('Consulta realizada', { consulta_id: id });
+  } else if (dados.data_hora && dados.data_hora !== consulta.data_hora) {
+    // Reagendamento: a data mudou sem que o status virasse cancelada.
+    await eventos.consultaReagendada(dadosAtualizados.usuario_id, {
+      quandoFormatado: formatarDataHora(dadosAtualizados.data_hora),
+      consultaId: id,
+    });
+  }
+  return atualizada;
+}
+
+async function deletar(id) {
+  const deletado = await consultaRepository.deletar(id);
+  if (!deletado) throw { status: 404, message: 'Consulta não encontrada' };
+  auditLogger.warn('Consulta removida', { consulta_id: id });
+  return { message: 'Consulta removida com sucesso' };
+}
+
+// ── Materiais previstos da consulta ─────────────────────────────────────
+// Mesmas regras já aplicadas ao checklist de cirurgia (cirurgiaService).
+
+async function listarMateriaisDaConsulta(consultaId) {
+  await buscarPorId(consultaId);
+  return consultaRepository.listarMateriaisDaConsulta(consultaId);
+}
+
+async function adicionarMaterial(consultaId, dados) {
+  await buscarPorId(consultaId);
+
+  const { material_id, quantidade } = dados;
+  if (!material_id) throw { status: 400, message: 'material_id é obrigatório' };
+
+  const material = await materialRepository.buscarPorId(material_id);
+  if (!material) throw { status: 404, message: 'Material não encontrado' };
+
+  if (quantidade != null && Number(quantidade) < 0) {
+    throw { status: 400, message: 'Quantidade não pode ser negativa' };
+  }
+
+  const jaVinculado = await consultaRepository.buscarVinculoPorConsultaEMaterial(consultaId, material_id);
+  if (jaVinculado) {
+    throw { status: 409, message: 'Este material já está vinculado a esta consulta' };
+  }
+
+  const vinculo = await consultaRepository.adicionarMaterial(consultaId, { material_id, quantidade });
+  auditLogger.info('Material vinculado à consulta', {
+    consulta_id: consultaId, material_id, quantidade: vinculo.quantidade,
+  });
+  return vinculo;
+}
+
+async function atualizarQuantidadeMaterial(consultaId, vinculoId, quantidade) {
+  await buscarPorId(consultaId);
+
+  if (quantidade == null || Number(quantidade) < 0) {
+    throw { status: 400, message: 'Quantidade é obrigatória e não pode ser negativa' };
+  }
+
+  const vinculo = await consultaRepository.buscarMaterialDaConsultaPorId(vinculoId);
+  if (!vinculo || vinculo.consulta_id !== Number(consultaId)) {
+    throw { status: 404, message: 'Material não encontrado nesta consulta' };
+  }
+
+  return consultaRepository.atualizarQuantidadeMaterial(vinculoId, quantidade);
+}
+
+async function removerMaterial(consultaId, vinculoId) {
+  await buscarPorId(consultaId);
+
+  const vinculo = await consultaRepository.buscarMaterialDaConsultaPorId(vinculoId);
+  if (!vinculo || vinculo.consulta_id !== Number(consultaId)) {
+    throw { status: 404, message: 'Material não encontrado nesta consulta' };
+  }
+
+  await consultaRepository.removerMaterial(vinculoId);
+  return { message: 'Material removido do checklist da consulta' };
+}
+
+module.exports = {
+  listar, buscarPorId, criar, atualizar, deletar, listarDisciplinas,
+  DISCIPLINAS_VALIDAS,
+  listarMateriaisDaConsulta, adicionarMaterial,
+  atualizarQuantidadeMaterial, removerMaterial,
+};

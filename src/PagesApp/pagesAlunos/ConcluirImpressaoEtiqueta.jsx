@@ -1,5 +1,5 @@
-import React from 'react';
-import { useNavigate, useLocation } from 'react-router-dom';
+
+import { Navigate, useNavigate, useLocation } from 'react-router-dom';
 import { ArrowLeft, CheckCircle2, Printer, Home } from 'lucide-react';
 
 export default function ConcluirImpressaoEtiqueta() {
@@ -30,8 +30,10 @@ export default function ConcluirImpressaoEtiqueta() {
   };
 
   const handleReimprimir = () => {
-    window.print();
+    navigate('/app/aluno/estoque/pre-visualizacao', { state: location.state?.configuracaoEtiqueta });
   };
+
+  if (!location.state?.configuracaoEtiqueta) return <Navigate to="/app/aluno/estoque/materiais" replace />;
 
   return (
     <div className="flex-1 flex flex-col min-h-0 bg-[#F8F9FD] font-sans pb-10">

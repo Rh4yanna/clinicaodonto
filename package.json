@@ -7,18 +7,24 @@
     "dev": "vite",
     "build": "vite build",
     "lint": "eslint .",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "test": "playwright test",
+    "test:ui": "playwright test --ui",
+    "check": "npm run lint && npm test && npm run build"
   },
   "dependencies": {
     "axios": "^1.19.0",
     "html5-qrcode": "^2.3.8",
+    "jsbarcode": "^3.12.3",
     "lucide-react": "^1.28.0",
+    "prop-types": "^15.8.1",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
     "react-router-dom": "^7.18.2"
   },
   "devDependencies": {
     "@eslint/js": "^9.9.0",
+    "@playwright/test": "^1.63.0",
     "@types/react": "^18.3.3",
     "@types/react-dom": "^18.3.0",
     "@vitejs/plugin-react": "^4.3.1",
@@ -30,6 +36,6 @@
     "globals": "^15.9.0",
     "postcss": "^8.4.41",
     "tailwindcss": "^3.4.10",
-    "vite": "^5.4.1"
+    "vite": "^6.4.3"
   }
 }

@@ -1,30 +1,38 @@
 import { useState, useEffect } from 'react';
 import { useNavigate, useLocation, useParams } from 'react-router-dom';
 import { ArrowLeft, User, ChevronRight, AlertTriangle, Loader2, CheckCircle2 } from 'lucide-react';
-import api from '../Services/api';
+import api from '../Services/api'; // Import ajustado para subir uma pasta e respeitar a letra maiúscula
 
 export default function CancelarConsulta() {
   const navigate = useNavigate();
   const location = useLocation();
   const { id: paramId } = useParams();
 
+  // Tenta obter os dados do agendamento vindo pela navegação (state)
   const agendamentoState = location.state?.agendamento || null;
 
   const [agendamento, setAgendamento] = useState(agendamentoState);
+  const [paciente, setPaciente] = useState(agendamentoState?.paciente || null);
   const [motivo, setMotivo] = useState('');
   const [carregandoDados, setCarregandoDados] = useState(!agendamentoState);
   const [enviando, setEnviando] = useState(false);
   const [erro, setErro] = useState('');
   const [sucesso, setSucesso] = useState('');
 
-  const agendamentoId = agendamento?.id || agendamento?._id || paramId;
+  const agendamentoId = agendamento?.id || paramId;
 
+  // Busca os dados da consulta (e do paciente vinculado) se não tiverem
+  // sido passados pelo state da navegação
   useEffect(() => {
     if (!agendamento && agendamentoId) {
       setCarregandoDados(true);
-      api.get(`/agendamentos/${agendamentoId}`)
-        .then((response) => {
+      api.get(`/consultas/${agendamentoId}`)
+        .then(async (response) => {
           setAgendamento(response.data);
+          if (response.data.paciente_id) {
+            const pacRes = await api.get(`/pacientes/${response.data.paciente_id}`);
+            setPaciente(pacRes.data);
+          }
         })
         .catch((err) => {
           console.error('Erro ao buscar consulta:', err);
@@ -49,15 +57,13 @@ export default function CancelarConsulta() {
     setSucesso('');
 
     try {
-      await api.put(`/agendamentos/${agendamentoId}/cancelar`, {
-        motivo,
-        status: 'CANCELADO'
-      }).catch(async () => {
-        await api.put(`/agendamentos/${agendamentoId}`, {
-          ...agendamento,
-          status: 'CANCELADO',
-          motivoCancelamento: motivo
-        });
+      const observacoesAtualizadas = [agendamento?.observacoes, `Cancelada: ${motivo}`]
+        .filter(Boolean)
+        .join(' | ');
+
+      await api.put(`/consultas/${agendamentoId}`, {
+        status: 'cancelada',
+        observacoes: observacoesAtualizadas,
       });
 
       setSucesso('Consulta cancelada com sucesso!');
@@ -84,14 +90,16 @@ export default function CancelarConsulta() {
     );
   }
 
-  const pacienteNome = agendamento?.pacienteNome || agendamento?.paciente?.nome || 'Paciente não identificado';
-  const pacienteCpf = agendamento?.pacienteCpf || agendamento?.paciente?.cpf || 'CPF não informado';
-  const pacienteStatus = agendamento?.paciente?.status || (agendamento?.paciente?.ativo ? 'Ativo' : 'Ativo');
-  
-  const dataConsulta = agendamento?.data || agendamento?.dataAgendamento || 'Data não definida';
-  const horaConsulta = agendamento?.hora || agendamento?.horario || 'Horário não definido';
-  const tipoConsulta = agendamento?.tipoConsulta || agendamento?.procedimento || agendamento?.procedimentoNome || 'Consulta';
-  const profissional = agendamento?.profissional || agendamento?.dentista || agendamento?.usuario?.nome || 'Não informado';
+  // Mapeamento dinâmico de informações do paciente e da consulta
+  const pacienteNome = paciente?.nome || 'Paciente não identificado';
+  const pacienteCpf = paciente?.cpf || 'CPF não informado';
+  const pacienteStatus = 'Ativo';
+
+  const dataHoraObj = agendamento?.data_hora ? new Date(agendamento.data_hora) : null;
+  const dataConsulta = dataHoraObj ? dataHoraObj.toLocaleDateString('pt-BR') : 'Data não definida';
+  const horaConsulta = dataHoraObj ? dataHoraObj.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }) : 'Horário não definido';
+  const tipoConsulta = agendamento?.queixa_principal || 'Consulta';
+  const profissional = agendamento?.usuario?.nome || 'Não informado';
 
   return (
     <div className="p-6 max-w-2xl mx-auto space-y-6 select-none font-sans">
@@ -120,10 +128,10 @@ export default function CancelarConsulta() {
           </div>
         </div>
 
-        {(agendamento?.pacienteId || agendamento?.paciente?._id || agendamento?.paciente?.id) && (
-          <button 
+        {paciente?.id && (
+          <button
             type="button"
-            onClick={() => navigate('/app/recepcao/pacientes/detalhes', { state: { paciente: agendamento.paciente } })}
+            onClick={() => navigate('/app/recepcao/pacientes/detalhes', { state: { paciente } })}
             className="text-[#3B44A8] text-xs font-bold flex items-center gap-0.5 hover:underline"
           >
             Ver histórico <ChevronRight size={14} />
@@ -166,14 +174,9 @@ export default function CancelarConsulta() {
               {agendamento?.aluno && (
                 <p className="text-gray-500 font-medium">Aluno: {agendamento.aluno}</p>
               )}
-              
-              {/* EXIBIÇÃO DE DISCIPLINA E MÓDULO */}
-              {(agendamento?.disciplina || agendamento?.modulo) && (
-                <p className="text-gray-500 font-medium">
-                  {agendamento.disciplina} {agendamento.modulo ? `• ${agendamento.modulo}` : ''}
-                </p>
+              {agendamento?.disciplina && (
+                <p className="text-gray-500 font-medium">{agendamento.disciplina}</p>
               )}
-
               {agendamento?.consultorio && (
                 <p className="text-gray-500 font-medium">{agendamento.consultorio}</p>
               )}

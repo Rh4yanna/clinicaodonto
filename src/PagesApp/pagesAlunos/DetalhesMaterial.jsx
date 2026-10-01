@@ -1,58 +1,47 @@
-import { useLocation, useNavigate } from 'react-router-dom';
+import { useState, useEffect, useCallback } from 'react';
+import { useLocation, useNavigate, useParams } from 'react-router-dom';
 import { ArrowLeft, AlertTriangle, ArrowUpCircle, ArrowDownCircle } from 'lucide-react';
+import api from '../../Services/api';
+import LotesMaterial from '../../components/LotesMaterial';
+import AcoesMaterial from '../../components/AcoesMaterial';
 
 export default function DetalhesMaterial() {
   const navigate = useNavigate();
   const location = useLocation();
+  const { id: paramId } = useParams();
 
-  // Recupera o material enviado pela navegação ou aplica o fallback
-  const material = location.state?.material || {
-    nome: "Máscara Descartável Tripla",
-    codigo: "125794216646",
-    embalagem: "(Cx c/ 50 Un)",
-    tipo: "Descartável",
-    categoria: "Luvas",
-    estoqueAtual: 1,
-    estoqueMinimo: 10,
-    estoqueIdeal: 20,
-    emFalta: 9,
-    fabricante: "Luvax Luvas",
-    lote: "2026-04-15",
-    anvisa: "103478465126",
-    dataEntrada: "15/04/2026",
-    validade: "15/04/2030",
-    unidadeMedida: "Caixa c/ 50 pares"
-  };
+  const [material, setMaterial] = useState(location.state?.material || null);
+  const [movimentacoes, setMovimentacoes] = useState([]);
+  // A lista completa já vem do backend; o botão "Ver todas" só alterna
+  // entre mostrar as 5 mais recentes e o histórico inteiro.
+  const [mostrarTodas, setMostrarTodas] = useState(false);
+  const materialId = material?.id || paramId;
 
-  // Histórico de movimentações
-  const movimentacoes = [
-    {
-      tipo: "Saída",
-      descricao: "Uso em procedimento - Consultório 02",
-      data: "18/05/2026",
-      qtd: "- 6 Un",
-      isEntrada: false
-    },
-    {
-      tipo: "Saída",
-      descricao: "Uso em sala de aula - Sala 02",
-      data: "14/05/2026",
-      qtd: "- 24 Un",
-      isEntrada: false
-    },
-    {
-      tipo: "Entrada",
-      descricao: "Compra - NF 12456",
-      data: "13/05/2026",
-      qtd: "+ 4 Un",
-      isEntrada: true
-    }
-  ];
+  // Sempre busca o material completo por id — a lista que manda o state
+  // via navegação usa uma versão "enxuta" (sem a imagem_base64 inteira,
+  // só um booleano tem_imagem), então só essa chamada garante a foto real.
+  // Recarrega material e histórico. Fica numa função só porque as ações
+  // (entrada, saída, edição) precisam atualizar a tela depois de salvar.
+  const recarregar = useCallback(() => {
+    if (!materialId) return;
+    api.get(`/materiais/${materialId}`)
+      .then((res) => setMaterial(res.data))
+      .catch((err) => console.error(err));
+    api.get('/movimentacoes', { params: { material_id: materialId } })
+      .then((res) => setMovimentacoes(res.data))
+      .catch((err) => console.error('Erro ao carregar movimentações:', err));
+  }, [materialId]);
+
+  useEffect(() => { recarregar(); }, [recarregar]);
+
+  if (!material) {
+    return <div className="p-8 text-center text-gray-400 text-sm">Carregando material...</div>;
+  }
 
   // Verificação de nível crítico de estoque
-  const estoqueAtualNum = Number(material.estoqueAtual ?? material.qtd ?? 0);
-  const estoqueMinimoNum = Number(material.estoqueMinimo ?? 5);
-  const isCritico = estoqueAtualNum < estoqueMinimoNum;
+  const estoqueAtualNum = Number(material.quantidade ?? 0);
+  const estoqueMinimoNum = Number(material.estoque_minimo ?? 5);
+  const isCritico = material.status_estoque === 'Crítico' || estoqueAtualNum < estoqueMinimoNum;
 
   return (
     <div className="flex-1 flex flex-col min-h-0 bg-white font-sans">
@@ -87,22 +76,18 @@ export default function DetalhesMaterial() {
         {/* CARD PRINCIPAL DO PRODUTO */}
         <div className="bg-white border border-gray-200 rounded-2xl p-4 shadow-xs space-y-4">
           <div className="flex gap-4">
-            {/* Imagem */}
-            <img 
-              src={material.imagem || "https://placehold.co/100x100/e2e8f0/475569?text=Mascara"} 
-              alt={material.nome || "Imagem do material"}
-              className="w-16 h-16 rounded-xl object-cover border border-gray-100 bg-gray-50 shrink-0"
-            />
+            {material.imagem_base64 && (
+              <img
+                src={material.imagem_base64}
+                alt={material.nome}
+                className="w-16 h-16 rounded-xl object-cover border border-gray-200 shrink-0"
+              />
+            )}
             {/* Infos Principais */}
             <div className="flex-1 min-w-0 text-[10px] text-gray-500 font-semibold space-y-0.5">
               <h2 className="text-gray-900 font-bold text-sm leading-tight truncate">{material.nome}</h2>
-              <p className="text-gray-400 font-medium">Código: {material.codigo || material.id || "N/A"}</p>
-              <p><span className="text-gray-400 font-medium">Tipo:</span> {material.tipo || "Consumo"}</p>
-              <p><span className="text-gray-400 font-medium">Categoria:</span> {material.categoria || "Geral"}</p>
-            </div>
-            {/* Embalagem */}
-            <div className="text-[10px] text-gray-500 font-bold shrink-0 self-start mt-1 bg-gray-50 px-2 py-1 rounded-md border border-gray-100">
-              {material.embalagem || "(1 Un)"}
+              <p className="text-gray-400 font-medium">Código: {material.codigo_barras || material.id || "N/A"}</p>
+              <p><span className="text-gray-400 font-medium">Categoria:</span> {material.categoria_nome || "Geral"}</p>
             </div>
           </div>
 
@@ -119,17 +104,17 @@ export default function DetalhesMaterial() {
             </div>
             <div className="px-1">
               <span className="block text-[9px] font-bold text-gray-500 leading-none">Estoque mínimo</span>
-              <span className="block text-base font-black text-[#3B44A8] mt-1.5">{material.estoqueMinimo ?? 10}</span>
+              <span className="block text-base font-black text-[#3B44A8] mt-1.5">{material.estoque_minimo ?? 10}</span>
               <span className="block text-[8px] font-semibold text-gray-400 mt-0.5">unidades</span>
             </div>
             <div className="px-1">
               <span className="block text-[9px] font-bold text-gray-500 leading-none">Estoque ideal</span>
-              <span className="block text-base font-black text-[#3B44A8] mt-1.5">{material.estoqueIdeal ?? 20}</span>
+              <span className="block text-base font-black text-[#3B44A8] mt-1.5">{material.estoque_ideal ?? '-'}</span>
               <span className="block text-[8px] font-semibold text-gray-400 mt-0.5">unidades</span>
             </div>
             <div className="px-1">
               <span className="block text-[9px] font-bold text-gray-500 leading-none">Em falta</span>
-              <span className="block text-base font-black text-[#3B44A8] mt-1.5">{material.emFalta ?? 0}</span>
+              <span className="block text-base font-black text-[#3B44A8] mt-1.5">{material.em_falta ?? 0}</span>
               <span className="block text-[8px] font-semibold text-gray-400 mt-0.5">unidades</span>
             </div>
           </div>
@@ -150,60 +135,83 @@ export default function DetalhesMaterial() {
             </div>
             <div>
               <span className="block text-gray-900 font-bold mb-0.5">Registro ANVISA</span>
-              {material.anvisa || "Isento / Não informado"}
+              {material.registro_anvisa || "Isento / Não informado"}
             </div>
             <div>
               <span className="block text-gray-900 font-bold mb-0.5">Data de entrada</span>
-              {material.dataEntrada || "-"}
+              {material.data_entrada ? new Date(material.data_entrada).toLocaleDateString('pt-BR') : "-"}
             </div>
             <div>
               <span className="block text-gray-900 font-bold mb-0.5">Validade</span>
-              {material.val || material.validade || "-"}
+              {material.validade ? new Date(material.validade).toLocaleDateString('pt-BR') : "-"}
             </div>
             <div>
               <span className="block text-gray-900 font-bold mb-0.5">Unidade de medida</span>
-              {material.unidadeMedida || "Unidade"}
+              {material.unidade_medida || "Unidade"}
             </div>
           </div>
         </div>
+
+        {/* DESCRIÇÃO (a coluna passou a existir na migration 011) */}
+        {material.descricao && (
+          <div className="space-y-2">
+            <h3 className="text-[#3B44A8] font-bold text-xs tracking-wide select-none px-1">Descrição</h3>
+            <div className="bg-white border border-gray-200 rounded-2xl p-4 shadow-xs text-[11px] font-medium text-gray-600 leading-relaxed whitespace-pre-line">
+              {material.descricao}
+            </div>
+          </div>
+        )}
+
+        {/* AÇÕES: entrada, saída, editar e (coordenador) excluir */}
+        <LotesMaterial materialId={material.id} />
+        <AcoesMaterial material={material} aoAtualizar={recarregar} />
 
         {/* SEÇÃO ÚLTIMAS MOVIMENTAÇÕES */}
         <div className="space-y-2">
           <div className="flex justify-between items-center select-none px-1">
             <h3 className="text-[#3B44A8] font-bold text-xs tracking-wide">Últimas movimentações</h3>
-            <button 
-              type="button" 
-              className="text-[#3B44A8] text-[10px] font-bold hover:underline cursor-pointer"
+            <button
+              type="button"
+              onClick={() => setMostrarTodas((atual) => !atual)}
+              disabled={movimentacoes.length <= 5}
+              className="text-[#3B44A8] text-[10px] font-bold hover:underline cursor-pointer disabled:opacity-40 disabled:cursor-default disabled:no-underline"
             >
-              Ver todas
+              {mostrarTodas ? 'Ver menos' : `Ver todas${movimentacoes.length > 5 ? ` (${movimentacoes.length})` : ''}`}
             </button>
           </div>
 
           <div className="bg-white border border-gray-200 rounded-2xl overflow-hidden shadow-xs divide-y divide-gray-100">
-            {movimentacoes.map((mov, index) => (
-              <div key={index} className="p-3.5 flex items-center justify-between text-[10px]">
-                <div className="flex items-center gap-3 min-w-0">
-                  {mov.isEntrada ? (
-                    <ArrowUpCircle className="text-emerald-500 shrink-0" size={20} />
-                  ) : (
-                    <ArrowDownCircle className="text-rose-500 shrink-0" size={20} />
-                  )}
-                  <div className="min-w-0 font-semibold">
-                    <p className={`font-bold ${mov.isEntrada ? 'text-emerald-600' : 'text-rose-600'}`}>
-                      {mov.tipo}
-                    </p>
-                    <p className="text-gray-400 truncate text-[9px] font-medium mt-0.5">{mov.descricao}</p>
+            {movimentacoes.length === 0 ? (
+              <div className="p-4 text-center text-gray-400 text-[10px]">Nenhuma movimentação registrada.</div>
+            ) : (
+              (mostrarTodas ? movimentacoes : movimentacoes.slice(0, 5)).map((mov) => {
+                const isEntrada = mov.tipo === 'entrada';
+                return (
+                  <div key={mov.id} className="p-3.5 flex items-center justify-between text-[10px]">
+                    <div className="flex items-center gap-3 min-w-0">
+                      {isEntrada ? (
+                        <ArrowUpCircle className="text-emerald-500 shrink-0" size={20} />
+                      ) : (
+                        <ArrowDownCircle className="text-rose-500 shrink-0" size={20} />
+                      )}
+                      <div className="min-w-0 font-semibold">
+                        <p className={`font-bold capitalize ${isEntrada ? 'text-emerald-600' : 'text-rose-600'}`}>
+                          {mov.tipo}
+                        </p>
+                        <p className="text-gray-400 text-[9px] font-medium mt-0.5">{mov.observacao || mov.usuario_nome}</p><p className="text-gray-500 text-[9px]">{mov.lote_nome && 'Lote: '+mov.lote_nome}{mov.fornecedor && ' · '+mov.fornecedor}{mov.data_recebimento && ' · Recebido em '+mov.data_recebimento.slice(0,10).split('-').reverse().join('/')}</p>
+                      </div>
+                    </div>
+
+                    <div className="text-right shrink-0 font-medium text-gray-400 text-[9px] pl-2">
+                      <p>{new Date(mov.data_hora).toLocaleDateString('pt-BR')}</p>
+                      <p className={`font-bold mt-0.5 ${isEntrada ? 'text-emerald-600' : 'text-rose-600'}`}>
+                        {isEntrada ? '+' : '-'} {mov.quantidade}
+                      </p>
+                    </div>
                   </div>
-                </div>
-                
-                <div className="text-right shrink-0 font-medium text-gray-400 text-[9px] pl-2">
-                  <p>{mov.data}</p>
-                  <p className={`font-bold mt-0.5 ${mov.isEntrada ? 'text-emerald-600' : 'text-rose-600'}`}>
-                    {mov.qtd}
-                  </p>
-                </div>
-              </div>
-            ))}
+                );
+              })
+            )}
           </div>
         </div>
 

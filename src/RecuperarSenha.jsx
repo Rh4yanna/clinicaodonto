@@ -12,18 +12,22 @@ export default function RecuperarSenha() {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    if (carregando) return;
     setCarregando(true);
     setErro('');
     setMensagemSucesso('');
 
     try {
       // Envia a solicitação de recuperação para a API no Railway
-      await api.post('/auth/recuperar-senha', { email });
+      const resposta = await api.post('/auth/recuperar-senha', { email: email.trim() });
 
-      setMensagemSucesso('Instruções enviadas! Verifique sua caixa de entrada.');
-      setEmail('');
+      if (resposta.data?.reset_token) {
+        setErro('A recuperação por e-mail está indisponível. Entre em contato com a administração da clínica.');
+        return;
+      }
+
+      navigate('/redefinir-senha', { state: { email: email.trim() } });
     } catch (err) {
-      console.error('Erro na recuperação de senha:', err);
       const msg = err.response?.data?.message || 'Não foi possível enviar o e-mail. Verifique se o endereço está correto.';
       setErro(msg);
     } finally {
@@ -108,7 +112,7 @@ export default function RecuperarSenha() {
               <Info className="text-[#3B44A8] shrink-0 mt-0.5" size={20} />
               <div className="text-xs text-[#3B44A8] leading-tight text-left">
                 <strong className="block font-bold mb-0.5">Importante</strong>
-                Enviaremos um link de redefinição de senha para seu e-mail institucional cadastrado no sistema.
+                Enviaremos um código de 6 dígitos para seu e-mail cadastrado. Ele será válido por 10 minutos.
               </div>
             </div>
 

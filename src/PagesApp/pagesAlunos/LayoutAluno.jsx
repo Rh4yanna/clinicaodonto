@@ -1,5 +1,5 @@
 import { Outlet, useNavigate, useLocation } from 'react-router-dom';
-import { Home, PackageCheck, Scissors, CalendarDays } from 'lucide-react';
+import { Home, PackageCheck, Scissors, CalendarDays, ShieldCheck } from 'lucide-react';
 
 export default function LayoutAluno() {
   const navigate = useNavigate();
@@ -12,6 +12,7 @@ export default function LayoutAluno() {
     if (path === '/app/aluno' || path === '/app/aluno/' || path.startsWith('/app/aluno/dashboard')) {
       return 'home';
     }
+    if (path.startsWith('/app/aluno/cme')) return 'cme';
     if (path.startsWith('/app/aluno/estoque')) {
       return 'estoque';
     }
@@ -31,19 +32,19 @@ export default function LayoutAluno() {
   const activeTab = obterAbaAtiva();
 
   return (
-    <div className="min-h-screen w-full bg-[#2E3583]/15 flex items-center justify-center p-0 sm:p-4 font-sans">
-      {/* Moldura mobile */}
-      <div className="w-full sm:max-w-[420px] min-h-screen sm:min-h-[820px] sm:h-[820px] bg-white flex flex-col justify-between shadow-2xl overflow-hidden sm:rounded-[32px] sm:border sm:border-gray-200 relative pb-[72px]">
+    <div className="clinical-shell font-sans">
+      {/* Layout responsivo */}
+      <div className="clinical-frame">
         
         {/* CONTEÚDO DINÂMICO ROLÁVEL */}
-        <main className="flex-1 flex flex-col overflow-y-auto min-h-0">
+        <main className="clinical-content">
           <Outlet />
         </main>
 
         {/* BARRA DE NAVEGAÇÃO INFERIOR FIXA */}
         <nav 
           aria-label="Navegação principal do aluno"
-          className="absolute bottom-0 left-0 w-full h-[72px] bg-[#3B44A8] text-white/60 px-2 sm:px-4 py-2 flex items-center justify-between sm:rounded-b-[30px] z-20 select-none shadow-[0_-4px_12px_rgba(0,0,0,0.1)]"
+          className="clinical-navigation text-white/80"
         >
           {/* Botão HOME */}
           <button 
@@ -56,9 +57,10 @@ export default function LayoutAluno() {
             }`}
           >
             <Home size={20} className={activeTab === 'home' ? 'stroke-[2.5px]' : ''} />
-            <span className="text-[9px] font-bold">Home</span>
+            <span className="text-xs font-bold">Home</span>
           </button>
 
+          <button onClick={() => navigate('/app/aluno/cme/pacotes')} aria-label="Abrir CME" aria-current={activeTab === 'cme' ? 'page' : undefined} className={`flex flex-col items-center flex-1 gap-1 ${activeTab === 'cme' ? 'text-[#F9A814]' : ''}`}><ShieldCheck size={20}/><span className="text-xs font-bold">CME</span></button>
           {/* Botão ESTOQUE */}
           <button 
             type="button"
@@ -70,7 +72,7 @@ export default function LayoutAluno() {
             }`}
           >
             <PackageCheck size={20} className={activeTab === 'estoque' ? 'stroke-[2.5px]' : ''} />
-            <span className="text-[9px] font-bold">Estoque</span>
+            <span className="text-xs font-bold">Estoque</span>
           </button>
 
           {/* Botão CIRURGIAS */}
@@ -84,7 +86,7 @@ export default function LayoutAluno() {
             }`}
           >
             <Scissors size={20} className={activeTab === 'cirurgias' ? 'stroke-[2.5px]' : ''} />
-            <span className="text-[9px] font-bold">Cirurgias</span>
+            <span className="text-xs font-bold">Cirurgias</span>
           </button>
 
           {/* Botão AGENDA */}
@@ -98,7 +100,7 @@ export default function LayoutAluno() {
             }`}
           >
             <CalendarDays size={20} className={activeTab === 'agenda' ? 'stroke-[2.5px]' : ''} />
-            <span className="text-[9px] font-bold">Agenda</span>
+            <span className="text-xs font-bold">Agenda</span>
           </button>
         </nav>
 

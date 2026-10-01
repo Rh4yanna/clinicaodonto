@@ -1,21 +1,11 @@
 import { Outlet, useNavigate, useLocation } from 'react-router-dom';
 import { Home, Users, Calendar, LogOut, UserCheck } from 'lucide-react';
-import api from '../Services/api'; // Caminho corrigido para a pasta Services
+import { useAuth } from '../context/auth';
 
 export default function LayoutRecepcao() {
   const navigate = useNavigate();
   const location = useLocation();
-
-  // Recupera dados do usuário do localStorage com fallback seguro
-  const getUsuarioSalvo = () => {
-    try {
-      return JSON.parse(localStorage.getItem('@clinica:usuario') || '{}');
-    } catch {
-      return {};
-    }
-  };
-
-  const usuarioSalvo = getUsuarioSalvo();
+  const { usuario, logout } = useAuth();
 
   // Identificação dinâmica da aba ativa com base na URL
   const getActiveTab = () => {
@@ -28,27 +18,18 @@ export default function LayoutRecepcao() {
 
   const activeTab = getActiveTab();
 
-  // Função de Logout Real integrada à API
-  const handleLogout = async () => {
-    try {
-      // Opcional: Avisa a API sobre a invalidação de sessão
-      await api.post('/auth/logout').catch(() => {});
-    } finally {
-      // Limpa dados de autenticação armazenados no cliente
-      localStorage.removeItem('@clinica:token');
-      localStorage.removeItem('@clinica:usuario');
-      delete api.defaults.headers.common['Authorization'];
-
-      // Redireciona para a tela de login
-      navigate('/login', { replace: true });
-    }
+  // O backend não tem uma rota de logout (é stateless via JWT) — só
+  // precisa limpar os dados salvos no cliente.
+  const handleLogout = () => {
+    logout();
+    navigate('/login', { replace: true });
   };
 
   return (
-    <div className="flex h-screen w-full bg-gray-100 overflow-hidden font-sans">
+    <div className="reception-shell flex h-screen w-full bg-gray-100 overflow-hidden font-sans">
       
       {/* SIDEBAR VERTICAL WEB */}
-      <aside className="w-64 bg-[#3B44A8] flex flex-col justify-between text-white shrink-0 shadow-xl z-40 select-none">
+      <aside className="reception-sidebar w-64 bg-[#3B44A8] flex flex-col justify-between text-white shrink-0 shadow-xl z-40 select-none">
         <div>
           {/* Logo / Título do Sistema */}
           <div className="p-6 border-b border-white/10">
@@ -98,14 +79,14 @@ export default function LayoutRecepcao() {
 
         {/* Rodapé da Sidebar: Usuário Ativo + Botão de Sair */}
         <div className="p-4 border-t border-white/10 space-y-3">
-          {usuarioSalvo.nome && (
+          {usuario?.nome && (
             <div className="flex items-center gap-3 px-3 py-2 bg-white/5 rounded-xl border border-white/10">
               <div className="p-1.5 bg-[#F9A814]/20 text-[#F9A814] rounded-lg">
                 <UserCheck size={16} />
               </div>
               <div className="min-w-0">
-                <p className="text-xs font-bold text-white truncate">{usuarioSalvo.nome}</p>
-                <p className="text-[10px] text-white/50 truncate capitalize">{usuarioSalvo.cargo || 'Recepção'}</p>
+                <p className="text-xs font-bold text-white truncate">{usuario.nome}</p>
+                <p className="text-[10px] text-white/50 truncate capitalize">{usuario.setor || 'Recepção'}</p>
               </div>
             </div>
           )}
@@ -121,7 +102,7 @@ export default function LayoutRecepcao() {
       </aside>
 
       {/* ÁREA DE CONTEÚDO PRINCIPAL EXPANSÍVEL */}
-      <main className="flex-1 h-full overflow-y-auto bg-gray-50 pb-8">
+      <main className="min-w-0 flex-1 h-full overflow-y-auto bg-gray-50 pb-8">
         <Outlet />
       </main>
     </div>

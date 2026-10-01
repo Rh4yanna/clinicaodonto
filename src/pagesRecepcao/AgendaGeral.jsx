@@ -1,250 +1,93 @@
-import { useState, useEffect, useRef } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { ChevronLeft, ChevronRight, MoreVertical, User, Plus, Loader2, AlertCircle } from 'lucide-react';
+import { useState, useEffect, useCallback } from 'react';
+import { useNavigate, useLocation } from 'react-router-dom';
+import { ChevronLeft, ChevronRight, Plus } from 'lucide-react';
 import api from '../Services/api';
+import { chaveDia, consultaConfirmada, consultaPendente } from '../utils/agenda';
 
 export default function AgendaGeral() {
   const navigate = useNavigate();
-  const menuRef = useRef(null);
-
-  const [dataAncorada, setDataAncorada] = useState(new Date()); 
-  const [diaSelecionado, setDiaSelecionado] = useState(new Date()); 
-  const [menuAbertoId, setMenuAbertoId] = useState(null);
-
-  const [agendamentos, setAgendamentos] = useState([]);
-  const [carregando, setCarregando] = useState(false);
+  const location = useLocation();
+  const consultaNotificada = new URLSearchParams(location.search).get('consulta');
+  const [mes, setMes] = useState(new Date());
+  const [dia, setDia] = useState(new Date());
+  const [consultas, setConsultas] = useState([]);
+  const [carregando, setCarregando] = useState(true);
   const [erro, setErro] = useState('');
-
-  const ano = dataAncorada.getFullYear();
-  const mesId = dataAncorada.getMonth(); 
-
-  const buscarAgendamentos = async () => {
-    setCarregando(true);
-    setErro('');
+  useEffect(() => {
+    if (!consultaNotificada) return;
+    api.get(`/consultas/${consultaNotificada}`).then(res => {
+      const data = new Date(res.data.data_hora); setDia(data); setMes(data);
+    }).catch(() => setErro('Não foi possível abrir a consulta da notificação.'));
+  }, [consultaNotificada]);
+  const carregar = useCallback(async () => {
     try {
-      const response = await api.get('/agendamentos', {
-        params: { mes: mesId + 1, ano }
-      });
-      
-      const dadosTratados = response.data.map((item) => {
-        // Trata string no formato AAAA-MM-DD para evitar desvio de fuso horário local
-        let dataObj;
-        if (typeof item.dataHora === 'string' && item.dataHora.includes('-')) {
-          const [anoStr, mesStr, diaStr] = item.dataHora.split('T')[0].split('-');
-          dataObj = new Date(Number(anoStr), Number(mesStr) - 1, Number(diaStr));
-        } else if (typeof item.data === 'string' && item.data.includes('-')) {
-          const [anoStr, mesStr, diaStr] = item.data.split('T')[0].split('-');
-          dataObj = new Date(Number(anoStr), Number(mesStr) - 1, Number(diaStr));
-        } else {
-          dataObj = new Date(item.dataHora || item.data);
-        }
-
-        return {
-          id: item.id || item._id,
-          nome: item.pacienteNome || item.paciente?.nome || item.nome || "Paciente sem nome",
-          hora: item.hora || item.horario || dataObj.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }),
-          procedimento: item.procedimento || item.procedimentoNome || "Consulta",
-          confirmado: item.status ? item.status.toUpperCase() === 'CONFIRMADO' : (item.confirmado ?? true),
-          dia: dataObj.getDate(),
-          mes: dataObj.getMonth(),
-          ano: dataObj.getFullYear(),
-          objetoOriginal: item
-        };
-      });
-
-      setAgendamentos(dadosTratados);
-    } catch (err) {
-      console.error('Erro ao buscar agendamentos:', err);
-      setErro('Não foi possível carregar as consultas agendadas.');
-    } finally {
-      setCarregando(false);
-    }
-  };
-
-  useEffect(() => {
-    buscarAgendamentos();
-  }, [ano, mesId]);
-
-  useEffect(() => {
-    function handleClickOutside(event) {
-      if (menuRef.current && !menuRef.current.contains(event.target)) {
-        setMenuAbertoId(null);
-      }
-    }
-    document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
+      const [c, p] = await Promise.all([api.get('/consultas'), api.get('/pacientes')]);
+      const nomes = Object.fromEntries(p.data.map(paciente => [paciente.id, paciente.nome]));
+      setConsultas(c.data.map(item => ({ ...item, nome: nomes[item.paciente_id] || 'Paciente sem nome' }))
+        .sort((a, b) => new Date(a.data_hora) - new Date(b.data_hora)));
+      setErro('');
+    } catch { setErro('Não foi possível atualizar a agenda. Tente novamente.'); }
+    finally { setCarregando(false); }
   }, []);
-
-  const nomeMesAno = dataAncorada.toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' });
-  const nomeMesFormatado = nomeMesAno.charAt(0).toUpperCase() + nomeMesAno.slice(1);
-
-  const diasDaSemanaLetras = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'];
-
-  const primeiroDiaDoMes = new Date(ano, mesId, 1).getDay(); 
-  const totalDiasNoMes = new Date(ano, mesId + 1, 0).getDate();
-
-  const mesAnterior = () => setDataAncorada(new Date(ano, mesId - 1, 1));
-  const mesSeguinte = () => setDataAncorada(new Date(ano, mesId + 1, 1));
-
-  const agendamentosFiltrados = agendamentos.filter(
-    (ag) => ag.dia === diaSelecionado.getDate() && 
-            ag.mes === diaSelecionado.getMonth() && 
-            ag.ano === diaSelecionado.getFullYear()
-  );
-
-  const alternarMenu = (id, e) => {
-    e.stopPropagation();
-    setMenuAbertoId(menuAbertoId === id ? null : id);
-  };
-
-  return (
-    <div className="p-8 max-w-4xl mx-auto space-y-6 select-none relative min-h-full pb-24 font-sans">
-      <div className="bg-white border border-gray-200 rounded-3xl shadow-sm overflow-hidden">
-        
-        {/* Calendário no Topo */}
-        <div className="p-6 border-b border-gray-100 bg-gray-50/50 rounded-t-3xl">
-          <div className="flex items-center justify-between mb-6">
-            <button onClick={mesAnterior} className="p-2 text-[#3B44A8] hover:bg-gray-200/60 rounded-full transition cursor-pointer">
-              <ChevronLeft size={20} />
-            </button>
-            <h2 className="text-[#3B44A8] font-black text-lg">{nomeMesFormatado}</h2>
-            <button onClick={mesSeguinte} className="p-2 text-[#3B44A8] hover:bg-gray-200/60 rounded-full transition cursor-pointer">
-              <ChevronRight size={20} />
-            </button>
-          </div>
-
-          <div className="grid grid-cols-7 gap-2 text-center mb-2">
-            {diasDaSemanaLetras.map((letra, idx) => (
-              <span key={idx} className="text-gray-400 text-xs font-bold">{letra}</span>
-            ))}
-          </div>
-
-          <div className="grid grid-cols-7 gap-2 text-center">
-            {Array.from({ length: primeiroDiaDoMes }).map((_, idx) => (
-              <div key={`empty-${idx}`} className="w-9 h-9"></div>
-            ))}
-
-            {Array.from({ length: totalDiasNoMes }).map((_, idx) => {
-              const numeroDia = idx + 1;
-              const dataCard = new Date(ano, mesId, numeroDia);
-              
-              const isSelected = 
-                diaSelecionado.getDate() === numeroDia && 
-                diaSelecionado.getMonth() === mesId &&
-                diaSelecionado.getFullYear() === ano;
-
-              return (
-                <button key={numeroDia} onClick={() => setDiaSelecionado(dataCard)} className="flex justify-center items-center py-1 cursor-pointer">
-                  <span className={`w-9 h-9 flex items-center justify-center rounded-full text-sm font-black transition-all ${
-                    isSelected 
-                      ? 'bg-[#3B44A8] text-white shadow-md shadow-blue-900/20 scale-105' 
-                      : 'text-gray-600 hover:bg-gray-200/70'
-                  }`}>
-                    {numeroDia}
-                  </span>
-                </button>
-              );
-            })}
-          </div>
-        </div>
-
-        {/* Feedback visual de erro */}
-        {erro && (
-          <div className="p-4 bg-red-50 border-b border-red-100 flex items-center gap-2 text-red-600 text-xs font-medium">
-            <AlertCircle size={16} />
-            {erro}
-          </div>
-        )}
-
-        {/* Lista de Consultas */}
-        <div className="divide-y divide-gray-100 bg-white rounded-b-3xl">
-          {carregando ? (
-            <div className="p-12 flex flex-col items-center justify-center text-gray-400 gap-2">
-              <Loader2 size={24} className="animate-spin text-[#3B44A8]" />
-              <span className="text-xs font-medium">Carregando consultas...</span>
-            </div>
-          ) : agendamentosFiltrados.length > 0 ? (
-            agendamentosFiltrados.map((item, index) => {
-              const esUltimoItem = index === agendamentosFiltrados.length - 1;
-
-              return (
-                <div key={item.id} className="p-5 flex items-center justify-between hover:bg-gray-50/60 transition">
-                  <div className="flex items-center gap-4">
-                    <div className="w-12 h-12 bg-gray-100 rounded-full border border-gray-200 flex items-center justify-center text-gray-500 shrink-0">
-                      <User size={24} />
-                    </div>
-                    <div>
-                      <h3 className="font-bold text-gray-900 text-sm">{item.nome}</h3>
-                      <p className="text-gray-500 text-xs mt-0.5 font-medium">
-                        {item.hora} • <span className="text-gray-400">{item.procedimento}</span>
-                      </p>
-                    </div>
-                  </div>
-
-                  <div className="flex items-center gap-3 relative">
-                    {item.confirmado ? (
-                      <span className="bg-blue-50 text-[#3B44A8] border border-blue-100 text-[11px] font-bold px-3 py-1 rounded-full">
-                        Agendada
-                      </span>
-                    ) : (
-                      <span className="bg-red-50 text-red-600 border border-red-100 text-[11px] font-bold px-3 py-1 rounded-full">
-                        Confirmação pendente
-                      </span>
-                    )}
-
-                    <button 
-                      onClick={(e) => alternarMenu(item.id, e)}
-                      className="p-1.5 text-gray-400 hover:text-gray-700 hover:bg-gray-100 rounded-lg transition cursor-pointer"
-                    >
-                      <MoreVertical size={18} />
-                    </button>
-
-                    {menuAbertoId === item.id && (
-                      <div 
-                        ref={menuRef}
-                        className={`absolute right-0 w-44 bg-white border border-gray-200 rounded-xl shadow-xl z-50 py-1.5 ${
-                          esUltimoItem ? 'bottom-9' : 'top-9'
-                        }`}
-                      >
-                        <button
-                          onClick={() => {
-                            setMenuAbertoId(null);
-                            navigate('/app/recepcao/agenda/reagendar', { state: { agendamento: item.objetoOriginal } });
-                          }}
-                          className="w-full text-left px-4 py-2 text-xs font-bold text-gray-700 hover:bg-gray-50 transition cursor-pointer"
-                        >
-                          Reagendar consulta
-                        </button>
-                        <button
-                          onClick={() => {
-                            setMenuAbertoId(null);
-                            navigate('/app/recepcao/agenda/cancelar', { state: { agendamento: item.objetoOriginal } });
-                          }}
-                          className="w-full text-left px-4 py-2 text-xs font-bold text-red-600 hover:bg-red-50 transition cursor-pointer"
-                        >
-                          Cancelar consulta
-                        </button>
-                      </div>
-                    )}
-                  </div>
-                </div>
-              );
-            })
-          ) : (
-            <div className="p-8 text-center text-gray-400 font-medium text-sm">
-              Nenhuma consulta marcada para este dia.
-            </div>
-          )}
-        </div>
-      </div>
-
-      {/* Botão Novo Agendamento */}
-      <button 
-        onClick={() => navigate('/app/recepcao/agenda/novo-agendamento')}
-        className="fixed bottom-6 right-8 bg-[#F9A814] text-white p-4 rounded-full shadow-lg shadow-orange-500/20 hover:bg-orange-500 hover:scale-105 transition-all z-40 cursor-pointer"
-      >
-        <Plus size={24} className="stroke-[3]" />
-      </button>
+  useEffect(() => {
+    carregar();
+    const intervalo = setInterval(carregar, 30000);
+    window.addEventListener('focus', carregar);
+    return () => { clearInterval(intervalo); window.removeEventListener('focus', carregar); };
+  }, [carregar]);
+  const selecionarDia = (data) => { setDia(data); setMes(new Date(data.getFullYear(), data.getMonth(), 1)); };
+  const mudarDia = (delta) => selecionarDia(new Date(dia.getFullYear(), dia.getMonth(), dia.getDate() + delta));
+  const doDia = consultas.filter(c => chaveDia(c.data_hora) === chaveDia(dia));
+  const hora = c => new Date(c.data_hora).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+  const grupos = [['Confirmados', doDia.filter(c => consultaConfirmada(c.status))], ['Não confirmados', doDia.filter(c => consultaPendente(c.status))], ['Cancelamentos e faltas', doDia.filter(c => ['cancelada', 'faltou'].includes(c.status))]];
+  return <div className="p-4 md:p-8 max-w-7xl mx-auto space-y-6 font-sans">
+    <div className="flex justify-between items-center gap-3">
+      <h1 className="text-xl font-black text-[#3B44A8]">Agenda geral</h1>
+      <button onClick={() => navigate('/app/recepcao/agenda/novo-agendamento')} className="flex gap-2 items-center bg-[#F9A814] text-white rounded-xl p-3 font-bold"><Plus size={18} /> Agendar consulta</button>
     </div>
-  );
+    {erro && <div role="alert" className="p-4 bg-red-50 text-red-700 rounded-xl">{erro} <button onClick={carregar} className="underline">Atualizar</button></div>}
+    {carregando && <p role="status">Carregando consultas...</p>}
+    <section aria-label="Calendário mensal" className="bg-white border rounded-2xl p-4 overflow-x-auto">
+      <div className="flex justify-between items-center mb-5">
+        <button aria-label="Mês anterior" onClick={() => setMes(new Date(mes.getFullYear(), mes.getMonth() - 1, 1))}><ChevronLeft /></button>
+        <h2 className="font-bold capitalize">{mes.toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' })}</h2>
+        <button aria-label="Próximo mês" onClick={() => setMes(new Date(mes.getFullYear(), mes.getMonth() + 1, 1))}><ChevronRight /></button>
+      </div>
+      <div className="grid grid-cols-7 gap-1 min-w-[700px]">
+        {['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'].map(d => <span key={d} className="text-center text-xs font-bold p-2">{d}</span>)}
+        {Array.from({ length: new Date(mes.getFullYear(), mes.getMonth(), 1).getDay() }, (_, i) => <div key={`vazio-${i}`} />)}
+        {Array.from({ length: new Date(mes.getFullYear(), mes.getMonth() + 1, 0).getDate() }, (_, i) => {
+          const data = new Date(mes.getFullYear(), mes.getMonth(), i + 1);
+          const itens = consultas.filter(c => chaveDia(c.data_hora) === chaveDia(data) && c.status !== 'cancelada');
+          return <button key={i} aria-label={data.toLocaleDateString('pt-BR')} aria-pressed={chaveDia(data) === chaveDia(dia)} onClick={() => selecionarDia(data)} className={`min-h-28 p-2 border rounded-lg text-left flex flex-col gap-1 ${chaveDia(data) === chaveDia(dia) ? 'bg-blue-50 border-[#3B44A8]' : 'border-gray-100 hover:bg-gray-50'}`}>
+            <span className="font-bold text-[#3B44A8]">{i + 1}</span>
+            {itens.map(c => <span key={c.id} className="text-[11px] break-words"><strong>{hora(c)}</strong> {c.nome}</span>)}
+          </button>;
+        })}
+      </div>
+    </section>
+    <div className="flex justify-center items-center gap-5">
+      <button aria-label="Dia anterior" onClick={() => mudarDia(-1)}><ChevronLeft /></button>
+      <h2 className="font-bold text-[#3B44A8] text-center">{dia.toLocaleDateString('pt-BR', { weekday: 'long', day: '2-digit', month: 'long', year: 'numeric' })}</h2>
+      <button aria-label="Próximo dia" onClick={() => mudarDia(1)}><ChevronRight /></button>
+      <button onClick={() => selecionarDia(new Date())} className="text-xs underline">Hoje</button>
+    </div>
+    <div className="grid md:grid-cols-2 gap-5">
+      {grupos.map(([titulo, itens], idx) => (idx < 2 || itens.length > 0) && <section key={titulo} aria-label={titulo} className="bg-white border rounded-2xl p-4">
+        <h3 className="font-bold mb-3">{titulo} ({itens.length})</h3>
+        {!carregando && !erro && itens.length === 0 && <p className="text-sm text-gray-500">Nenhum paciente nesta lista.</p>}
+        {itens.map(c => <div key={c.id} className="border-t py-3 space-y-2">
+          <p className="text-sm"><strong>{hora(c)}</strong> — {c.nome}</p>
+          <p className="text-xs text-gray-500">{c.queixa_principal || 'Consulta'} · {c.disciplina || 'Sem disciplina'} · {c.status.replaceAll('_', ' ')}</p>
+          <div className="flex gap-3 text-xs text-[#3B44A8]">
+            <button onClick={() => navigate('/app/recepcao/pacientes/detalhes', { state: { paciente: { id: c.paciente_id } } })}>Ver paciente</button>
+            {!['cancelada', 'realizada', 'faltou'].includes(c.status) && <>
+              <button onClick={() => navigate('/app/recepcao/agenda/reagendar', { state: { agendamento: c } })}>Reagendar</button>
+              <button onClick={() => navigate('/app/recepcao/agenda/cancelar', { state: { agendamento: c } })}>Cancelar</button>
+            </>}
+          </div>
+        </div>)}
+      </section>)}
+    </div>
+  </div>;
 }

@@ -1,36 +1,44 @@
+import PropTypes from 'prop-types';
 import { useState, useEffect, useCallback } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { ArrowLeft, Bell, CheckCircle, AlertTriangle, ChevronRight, Loader2, AlertCircle } from 'lucide-react';
-import api from '../Services/api';
+import api from '../Services/api'; // Ajustado caminho e maiúscula para Services
 
 export default function StatusConsultas() {
   const navigate = useNavigate();
   const location = useLocation();
 
+  // Captura se o dashboard enviou alguma aba preferencial, senão assume 'confirmadas'
   const abaInicial = location.state?.abaInicial || 'confirmadas';
-  const [abaAtiva, setAbaAtiva] = useState(abaInicial);
+  const [abaAtiva, setAbaAtiva] = useState(abaInicial); // 'confirmadas', 'pendentes', 'faltas'
 
   const [consultas, setConsultas] = useState([]);
   const [carregando, setCarregando] = useState(true);
   const [erro, setErro] = useState('');
 
+  // Busca agendamentos filtrados pela aba na API
   const carregarConsultas = useCallback(async () => {
     try {
       setCarregando(true);
       setErro('');
 
+      // Mapeamento das abas para o status real do backend (enum de "consulta")
       const mapaStatus = {
-        confirmadas: 'CONFIRMADO',
-        pendentes: 'PENDENTE',
-        faltas: 'FALTA'
+        confirmadas: 'confirmada',
+        pendentes: 'agendada',
+        faltas: 'faltou'
       };
 
-      const statusParam = mapaStatus[abaAtiva] || 'CONFIRMADO';
-      const resposta = await api.get('/agendamentos', {
-        params: { status: statusParam }
-      });
+      const statusParam = mapaStatus[abaAtiva] || 'confirmada';
+      const [consultasRes, pacientesRes] = await Promise.all([
+        api.get('/consultas', { params: { status: statusParam } }),
+        api.get('/pacientes'),
+      ]);
 
-      setConsultas(resposta.data || []);
+      const nomePorPacienteId = {};
+      pacientesRes.data.forEach((p) => { nomePorPacienteId[p.id] = p.nome; });
+
+      setConsultas(consultasRes.data.map((c) => ({ ...c, _pacienteNome: nomePorPacienteId[c.paciente_id] })) || []);
     } catch (err) {
       console.error('Erro ao buscar consultas por status:', err);
       setErro('Não foi possível carregar as consultas.');
@@ -149,7 +157,7 @@ export default function StatusConsultas() {
             <p className="text-sm font-bold text-gray-800">{erro}</p>
             <button 
               onClick={carregarConsultas}
-              className="text-xs text-[#3B44A8] font-bold underline mt-1 cursor-pointer"
+              className="text-xs text-[#3B44A8] font-bold underline mt-1"
             >
               Tentar novamente
             </button>
@@ -163,18 +171,17 @@ export default function StatusConsultas() {
               </div>
             ) : (
               consultas.map((item, idx) => (
-                <ItemLista 
-                  key={item.id || item._id || idx} 
+                <ItemLista
+                  key={item.id || idx}
                   paciente={{
-                    id: item.id || item._id,
-                    data: item.data || '---',
-                    hora: item.horario || item.hora || '--:--',
-                    nome: item.pacienteNome || item.paciente?.nome || 'Paciente sem nome',
-                    proc: item.procedimento || item.servico || 'Consulta Geral',
-                    esp: item.disciplina || item.especialidade || item.categoria || 'Odontologia',
-                    modulo: item.modulo || '',
+                    id: item.id,
+                    data: item.data_hora ? new Date(item.data_hora).toLocaleDateString('pt-BR') : '---',
+                    hora: item.data_hora ? new Date(item.data_hora).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }) : '--:--',
+                    nome: item._pacienteNome || 'Paciente sem nome',
+                    proc: item.queixa_principal || 'Consulta Geral',
+                    esp: 'Odontologia',
                     raw: item
-                  }} 
+                  }}
                   onSelect={(agendamento) => navigate('/app/recepcao/agenda', { state: { agendamento } })}
                 />
               ))
@@ -206,10 +213,7 @@ function ItemLista({ paciente, onSelect }) {
         <div className="flex-1 min-w-0">
           <h4 className="font-bold text-gray-950 text-sm truncate">{paciente.nome}</h4>
           <p className="text-gray-600 text-xs font-medium mt-0.5">
-            {paciente.proc} •{' '}
-            <span className="text-gray-400 text-[11px]">
-              {paciente.esp} {paciente.modulo ? `(${paciente.modulo})` : ''}
-            </span>
+            {paciente.proc} • <span className="text-gray-400 text-[11px]">{paciente.esp}</span>
           </p>
         </div>
       </div>
@@ -220,3 +224,4 @@ function ItemLista({ paciente, onSelect }) {
     </div>
   );
 }
+ItemLista.propTypes = { onSelect: PropTypes.func.isRequired, paciente: PropTypes.shape({ raw: PropTypes.object, data: PropTypes.string, hora: PropTypes.string, nome: PropTypes.string, proc: PropTypes.string, esp: PropTypes.string }).isRequired };

@@ -1,0 +1,17 @@
+.etiquetas-impressao { display: none; }
+.etiqueta { box-sizing: border-box; padding: 2mm; background: white; color: black; font: 9px Arial, sans-serif; overflow-wrap: anywhere; break-inside: avoid; }
+.etiqueta strong { display: block; font-size: 11px; }
+.etiqueta-codigos { display: flex; align-items: center; gap: 2mm; margin: 1mm 0; }
+.etiqueta-qr { width: 14mm; height: 14mm; }
+.etiqueta-pacote { width: 70mm; height: 50mm; text-align: center; padding: 3mm; overflow: hidden; }
+.etiqueta-pacote > strong { max-height: 10mm; overflow: hidden; }
+.etiqueta-pacote-corpo { display: grid; grid-template-columns: minmax(0,1fr) 23mm; gap: 2mm; align-items: center; margin-top: 2mm; }
+.etiqueta-pacote-corpo > div:first-child { text-align: left; line-height: 1.3; }
+.etiqueta-pacote-corpo p { margin: 1mm 0; }
+.etiqueta-pacote-qr { width: 23mm; height: 23mm; display: block; margin: 1mm auto; object-fit: contain; image-rendering: pixelated; }
+.etiqueta-barra { min-width: 0; max-width: 100%; width: 29mm; height: 12mm; }
+@media print {
+  body:has(.etiquetas-impressao) > #root { display: none !important; }
+  .etiquetas-impressao { display: flex; flex-wrap: wrap; align-items: flex-start; gap: 2mm; }
+  body:has(.etiquetas-impressao) { margin: 0; background: white; }
+}

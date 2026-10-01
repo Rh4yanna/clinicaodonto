@@ -2,9 +2,11 @@ import { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { ArrowLeft, Save, ToggleLeft, Loader2, AlertCircle, CheckCircle2 } from 'lucide-react';
 import api from '../Services/api';
+import FormularioSaude from '../components/FormularioSaude';
 
 export default function CadastroPacienteRecepcao() {
   const navigate = useNavigate();
+  const [saude, setSaude] = useState({ alergias_status: '', medicamentos_status: '', alergias: [], medicamentos: [] });
   const location = useLocation();
   
   const pacienteEdicao = location.state?.pacienteEdicao || null;
@@ -34,74 +36,72 @@ export default function CadastroPacienteRecepcao() {
   // Estados de submissão e controle da UI
   const [carregando, setCarregando] = useState(false);
   const [erro, setErro] = useState('');
+  // Busca de endereço pelo CEP. O backend já expunha GET /pacientes/cep/:cep
+  // (proxy do ViaCEP), mas nenhuma tela chamava — o endereço era todo
+  // digitado à mão.
+  const [buscandoCep, setBuscandoCep] = useState(false);
+  const [erroCep, setErroCep] = useState('');
   const [sucesso, setSucesso] = useState('');
 
   // Preenchimento dos dados em caso de edição
   useEffect(() => {
     if (isEditing && pacienteEdicao) {
       setNome(pacienteEdicao.nome || '');
-      setDataNascimento(pacienteEdicao.dataNascimento ? pacienteEdicao.dataNascimento.split('T')[0] : '');
-      setSexo(pacienteEdicao.sexo || '');
+      setDataNascimento(pacienteEdicao.data_nascimento ? pacienteEdicao.data_nascimento.split('T')[0] : '');
       setCpf(pacienteEdicao.cpf || '');
       setTelefone(pacienteEdicao.telefone || '');
       setEmail(pacienteEdicao.email || '');
       setEndereco(pacienteEdicao.endereco || '');
-      setNumero(pacienteEdicao.numero || '');
-      setComplemento(pacienteEdicao.complemento || '');
-      setBairro(pacienteEdicao.bairro || '');
-      setCep(pacienteEdicao.cep || '');
-      setCidade(pacienteEdicao.cidade || '');
-      setUf(pacienteEdicao.uf || 'PR');
-      setStatus(pacienteEdicao.status || 'ativo');
-
-      if (pacienteEdicao.responsavel) {
-        setNomeResponsavel(pacienteEdicao.responsavel.nomeResponsavel || pacienteEdicao.responsavel.nome || '');
-        setTelefoneResponsavel(pacienteEdicao.responsavel.telefoneResponsavel || pacienteEdicao.responsavel.telefone || '');
-        setParentesco(pacienteEdicao.responsavel.parentesco || '');
-      }
+      setStatus(pacienteEdicao.ativo === false ? 'inativo' : 'ativo');
+      // Sexo, número, complemento, bairro, CEP, cidade, UF e responsável
+      // são só de exibição neste formulário — o backend ainda não tem
+      // colunas para eles, guarda só o endereço completo em texto.
     }
   }, [isEditing, pacienteEdicao]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    if (carregando) return;
+    if (!isEditing && ['alergias', 'medicamentos'].some(chave => !saude[`${chave}_status`] || (saude[`${chave}_status`] === 'informado' && !saude[chave].length))) {
+      setErro('Informe alergias e medicamentos, ou declare que o paciente não possui/não utiliza.'); return;
+    }
     setCarregando(true);
     setErro('');
     setSucesso('');
-    
+
+    // O backend só guarda um campo de endereço em texto — juntamos as
+    // partes do formulário (rua, número, bairro, cidade, UF, CEP) nele.
+    const enderecoCompleto = [
+      endereco && numero ? `${endereco}, ${numero}` : endereco,
+      complemento,
+      bairro,
+      cidade && uf ? `${cidade} - ${uf}` : cidade,
+      cep,
+    ].filter(Boolean).join(', ');
+
     const dadosPaciente = {
-      nome, 
-      dataNascimento, 
-      sexo, 
-      cpf, 
-      telefone, 
+      nome,
+      data_nascimento: dataNascimento,
+      cpf,
+      telefone,
       email,
-      endereco, 
-      numero, 
-      complemento, 
-      bairro, 
-      cep, 
-      cidade, 
-      uf, 
-      status,
-      responsavel: { nomeResponsavel, telefoneResponsavel, parentesco }
+      endereco: enderecoCompleto,
+      ...(!isEditing ? { saude } : {}),
     };
 
     try {
-      let response;
       if (isEditing) {
-        const id = pacienteEdicao.id || pacienteEdicao._id;
-        response = await api.put(`/pacientes/${id}`, dadosPaciente);
+        const id = pacienteEdicao.id;
+        await api.put(`/pacientes/${id}`, dadosPaciente);
+        await api.patch(`/pacientes/${id}/status`, { ativo: status === 'ativo' });
         setSucesso('Paciente atualizado com sucesso!');
       } else {
-        response = await api.post('/pacientes', dadosPaciente);
+        await api.post('/pacientes', dadosPaciente);
         setSucesso('Paciente cadastrado com sucesso!');
       }
 
-      const pacienteSalvo = response?.data || { ...dadosPaciente, cpf };
-
       setTimeout(() => {
-        // Retorna via histórico trazendo o paciente criado de volta ao agendamento
-        navigate(-1, { state: { pacienteNovo: pacienteSalvo } });
+        navigate('/app/recepcao/pacientes');
       }, 1500);
 
     } catch (err) {
@@ -113,6 +113,29 @@ export default function CadastroPacienteRecepcao() {
     }
   };
 
+  const buscarEnderecoPorCep = async () => {
+    const cepLimpo = (cep || '').replace(/\D/g, '');
+    if (cepLimpo.length !== 8) {
+      setErroCep('Informe um CEP com 8 dígitos.');
+      return;
+    }
+    setBuscandoCep(true);
+    setErroCep('');
+    try {
+      const { data } = await api.get(`/pacientes/cep/${cepLimpo}`);
+      // O ViaCEP devolve logradouro/bairro/localidade/uf.
+      if (data.logradouro) setEndereco(data.logradouro);
+      if (data.bairro) setBairro(data.bairro);
+      if (data.localidade) setCidade(data.localidade);
+      if (data.uf) setUf(data.uf);
+    } catch (err) {
+      console.error('Erro ao buscar CEP:', err);
+      setErroCep('CEP não encontrado.');
+    } finally {
+      setBuscandoCep(false);
+    }
+  };
+
   return (
     <div className="flex flex-col w-full min-h-full bg-transparent font-sans">
       
@@ -120,8 +143,8 @@ export default function CadastroPacienteRecepcao() {
         <div className="flex items-center gap-4">
           <button 
             type="button"
-            onClick={() => navigate(-1)}
-            className="p-2 text-gray-500 hover:text-[#3B44A8] hover:bg-gray-100 rounded-xl transition cursor-pointer"
+            onClick={() => navigate('/app/recepcao/pacientes')}
+            className="p-2 text-gray-500 hover:text-[#3B44A8] hover:bg-gray-100 rounded-xl transition"
           >
             <ArrowLeft size={20} />
           </button>
@@ -133,6 +156,7 @@ export default function CadastroPacienteRecepcao() {
 
       <div className="p-8 max-w-5xl w-full mx-auto flex-1 pb-24">
         <form onSubmit={handleSubmit} className="space-y-8">
+          {!isEditing && <section className="bg-white border rounded-2xl p-6 space-y-4"><h2 className="font-bold text-[#3B44A8]">Informações de saúde obrigatórias</h2><FormularioSaude valor={saude} onChange={setSaude} /></section>}
 
           {/* Mensagens de Feedback */}
           {erro && (
@@ -231,7 +255,26 @@ export default function CadastroPacienteRecepcao() {
 
               <div className="md:col-span-4">
                 <label className="block text-gray-700 text-xs font-bold mb-1.5">CEP</label>
-                <input type="text" placeholder="00000-000" value={cep} onChange={(e) => setCep(e.target.value)} className="input-web" />
+                <div className="flex gap-2">
+                  <input
+                    type="text"
+                    placeholder="00000-000"
+                    value={cep}
+                    onChange={(e) => { setCep(e.target.value); setErroCep(''); }}
+                    onBlur={() => { if ((cep || '').replace(/\D/g, '').length === 8) buscarEnderecoPorCep(); }}
+                    className="input-web flex-1"
+                  />
+                  <button
+                    type="button"
+                    onClick={buscarEnderecoPorCep}
+                    disabled={buscandoCep}
+                    className="px-3 bg-[#3B44A8] text-white rounded-xl text-xs font-bold disabled:opacity-40 shrink-0"
+                    title="Buscar endereço pelo CEP"
+                  >
+                    {buscandoCep ? '...' : 'Buscar'}
+                  </button>
+                </div>
+                {erroCep && <p className="text-red-500 text-[10px] font-semibold mt-1">{erroCep}</p>}
               </div>
 
               <div className="md:col-span-5">
@@ -288,7 +331,7 @@ export default function CadastroPacienteRecepcao() {
             <button 
               type="submit"
               disabled={carregando}
-              className={`w-full sm:w-auto min-w-[200px] bg-[#F9A814] hover:bg-[#e0940f] text-white font-bold text-sm py-3.5 px-6 rounded-xl transition flex items-center justify-center gap-2 shadow-md active:scale-[0.98] cursor-pointer ${
+              className={`w-full sm:w-auto min-w-[200px] bg-[#F9A814] hover:bg-[#e0940f] text-white font-bold text-sm py-3.5 px-6 rounded-xl transition flex items-center justify-center gap-2 shadow-md active:scale-[0.98] ${
                 carregando ? 'opacity-70 cursor-not-allowed' : ''
               }`}
             >
@@ -329,6 +372,7 @@ export default function CadastroPacienteRecepcao() {
           color: #9ca3af;
         }
       `}</style>
+
     </div>
   );
 }

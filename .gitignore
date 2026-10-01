@@ -25,3 +25,16 @@ dist-ssr
 
 .vercel
 .env*
+!.env.example
+clinica-odontologica-frontend/
+playwright-report/
+test-results/
+.review-backend.local/
+
+# Artefatos de entrega gerados a partir da documentacao
+/database/*.pdf
+/entrega-backend-*.zip
+
+# Copias de banco locais
+*.dump
+*.backup

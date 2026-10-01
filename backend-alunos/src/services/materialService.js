@@ -1,0 +1,208 @@
+// Regras do módulo de estoque.
+
+const materialRepository = require('../repositories/materialRepository');
+const categoriaRepository = require('../repositories/categoriaRepository');
+const { gerarQRCode } = require('../utils/qrcode');
+const {
+  validarCamposObrigatoriosMaterial,
+  validarValoresNumericosMaterial,
+} = require('../utils/validacoesEstoque');
+
+// Calcula campos derivados que a tela "Detalhes do material" exibe,
+// mas que não ficam armazenados no banco (status e quantidade em falta).
+function comCamposCalculados(material) {
+  if (!material) return material;
+
+  const quantidade = material.quantidade;
+  const estoqueMinimo = material.estoque_minimo;
+  const estoqueIdeal = material.estoque_ideal;
+
+  let status_estoque = 'Normal';
+  if (quantidade <= estoqueMinimo) {
+    status_estoque = 'Crítico';
+  } else if (estoqueIdeal != null && quantidade <= estoqueIdeal) {
+    status_estoque = 'Baixo';
+  }
+
+  const em_falta = estoqueIdeal != null ? Math.max(estoqueIdeal - quantidade, 0) : null;
+
+  return { ...material, status_estoque, em_falta };
+}
+
+async function listar(filtros) {
+  const materiais = await materialRepository.listar(filtros);
+  return materiais.map(comCamposCalculados);
+}
+
+async function buscarPorId(id) {
+  const material = await materialRepository.buscarPorId(id);
+  if (!material) throw { status: 404, message: 'Material não encontrado' };
+  return comCamposCalculados(material);
+}
+
+async function validarCategoria(categoriaId) {
+  const categoria = await categoriaRepository.buscarPorId(categoriaId);
+  if (!categoria) throw { status: 400, message: 'Categoria informada não existe' };
+}
+
+// Foto do material é opcional, enviada como data URL base64
+// (ex.: "data:image/png;base64,...."). Guardamos direto no Postgres —
+// sem serviço de storage externo — então só validamos o formato e um
+// limite de tamanho razoável pra não estourar o limite de payload da API.
+const TAMANHO_MAXIMO_IMAGEM_BASE64 = 6 * 1024 * 1024; // ~6MB de texto base64
+function validarImagemBase64(imagemBase64) {
+  if (imagemBase64 == null || imagemBase64 === '') return null;
+  if (typeof imagemBase64 !== 'string' || !imagemBase64.startsWith('data:image/')) {
+    throw { status: 400, message: 'Imagem deve ser enviada como data URL (ex.: data:image/png;base64,...)' };
+  }
+  if (imagemBase64.length > TAMANHO_MAXIMO_IMAGEM_BASE64) {
+    throw { status: 400, message: 'Imagem muito grande. Envie um arquivo menor.' };
+  }
+  return imagemBase64;
+}
+
+async function criar(dados) {
+  dados = { ...dados, codigo_barras: String(dados.codigo_barras || '').trim() || ('MAT' + require('crypto').randomBytes(8).toString('hex').toUpperCase()) };
+  if (/^CME\d+$/i.test(dados.codigo_barras)) throw {status:400,message:'O prefixo CME é reservado aos pacotes de esterilização.'};
+  if (dados.quantidade && Number(dados.quantidade) !== 0 || dados.lote || dados.validade) throw {status:400,message:'Cadastre o material e registre lote, validade e quantidade em Entrada de estoque.'};
+  if (!['consumivel','instrumental'].includes(dados.tipo_material || 'consumivel') || (dados.passa_cme && dados.tipo_material !== 'instrumental')) throw {status:400,message:'Somente instrumental reutilizável pode passar pelo CME.'};
+  const erros = [
+    ...validarCamposObrigatoriosMaterial(dados),
+    ...validarValoresNumericosMaterial(dados),
+  ];
+  if (erros.length) throw { status: 400, message: erros.join('; ') };
+
+  await validarCategoria(dados.categoria_id);
+
+  // Regra: código de barras não pode ser duplicado
+  const materialExistente = await materialRepository.buscarPorCodigoBarras(dados.codigo_barras);
+  if (materialExistente) {
+    throw { status: 409, message: 'Já existe um material cadastrado com esse código de barras' };
+  }
+
+  const quantidade = dados.quantidade ?? 0;
+  const estoqueMinimo = dados.estoque_minimo ?? 5;
+  const estoqueIdeal = dados.estoque_ideal ?? null;
+
+  // Regra: estoque ideal não pode ser menor que o estoque mínimo
+  if (estoqueIdeal != null && Number(estoqueIdeal) < Number(estoqueMinimo)) {
+    throw { status: 400, message: 'Estoque ideal não pode ser menor que o estoque mínimo' };
+  }
+
+  const material = await materialRepository.criar({
+    tipo_material: dados.tipo_material || 'consumivel',
+    passa_cme: dados.passa_cme === true,
+    nome: dados.nome.trim(),
+    codigo_barras: dados.codigo_barras.trim(),
+    categoria_id: dados.categoria_id,
+    unidade_medida: dados.unidade_medida.trim(),
+    quantidade,
+    estoque_minimo: estoqueMinimo,
+    estoque_ideal: estoqueIdeal,
+    fabricante: dados.fabricante ?? null,
+    lote: dados.lote ?? null,
+    registro_anvisa: dados.registro_anvisa ?? null,
+    data_entrada: dados.data_entrada ?? null,
+    validade: dados.validade ?? null,
+    imagem_base64: validarImagemBase64(dados.imagem_base64),
+    descricao: dados.descricao ?? null,
+  });
+
+  return comCamposCalculados(material);
+}
+
+async function atualizar(id, dados) {
+  const materialAtual = await materialRepository.buscarPorId(id);
+  if (!materialAtual) throw { status: 404, message: 'Material não encontrado' };
+
+  if (dados.quantidade !== undefined && Number(dados.quantidade) !== Number(materialAtual.quantidade)) throw {status:400,message:'Use uma entrada ou saída por lote para alterar o estoque.'};
+  const dadosAtualizados = {
+    tipo_material: dados.tipo_material ?? materialAtual.tipo_material,
+    passa_cme: dados.passa_cme ?? materialAtual.passa_cme,
+    nome: dados.nome ?? materialAtual.nome,
+    codigo_barras: dados.codigo_barras ?? materialAtual.codigo_barras,
+    categoria_id: dados.categoria_id ?? materialAtual.categoria_id,
+    unidade_medida: dados.unidade_medida ?? materialAtual.unidade_medida,
+    quantidade: dados.quantidade ?? materialAtual.quantidade,
+    estoque_minimo: dados.estoque_minimo ?? materialAtual.estoque_minimo,
+    estoque_ideal: dados.estoque_ideal !== undefined ? dados.estoque_ideal : materialAtual.estoque_ideal,
+    fabricante: dados.fabricante ?? materialAtual.fabricante,
+    lote: dados.lote ?? materialAtual.lote,
+    registro_anvisa: dados.registro_anvisa ?? materialAtual.registro_anvisa,
+    data_entrada: dados.data_entrada ?? materialAtual.data_entrada,
+    validade: dados.validade ?? materialAtual.validade,
+    imagem_base64: dados.imagem_base64 !== undefined
+      ? validarImagemBase64(dados.imagem_base64)
+      : materialAtual.imagem_base64,
+    descricao: dados.descricao ?? materialAtual.descricao,
+  };
+
+  if (dadosAtualizados.passa_cme && dadosAtualizados.tipo_material !== 'instrumental') throw {status:400,message:'Somente instrumentais reutilizáveis passam pelo CME.'};
+  const erros = [
+    ...validarCamposObrigatoriosMaterial(dadosAtualizados),
+    ...validarValoresNumericosMaterial(dadosAtualizados),
+  ];
+  if (erros.length) throw { status: 400, message: erros.join('; ') };
+
+  if (dadosAtualizados.categoria_id !== materialAtual.categoria_id) {
+    await validarCategoria(dadosAtualizados.categoria_id);
+  }
+
+  if (dadosAtualizados.codigo_barras !== materialAtual.codigo_barras) {
+    if (/^CME\d+$/i.test(dadosAtualizados.codigo_barras.trim())) throw {status:400,message:'O prefixo CME é reservado aos pacotes de esterilização.'};
+    const emUso = await materialRepository.buscarPorCodigoBarras(dadosAtualizados.codigo_barras);
+    if (emUso) throw { status: 409, message: 'Código de barras já cadastrado para outro material' };
+  }
+
+  if (
+    dadosAtualizados.estoque_ideal != null &&
+    Number(dadosAtualizados.estoque_ideal) < Number(dadosAtualizados.estoque_minimo)
+  ) {
+    throw { status: 400, message: 'Estoque ideal não pode ser menor que o estoque mínimo' };
+  }
+
+  const material = await materialRepository.atualizar(id, dadosAtualizados);
+  return comCamposCalculados(material);
+}
+
+async function deletar(id) {
+  const material = await materialRepository.buscarPorId(id);
+  if (!material) throw { status: 404, message: 'Material não encontrado' };
+
+  // Regra: material com movimentações registradas não pode ser excluído
+  const totalMovimentacoes = await materialRepository.contarMovimentacoesVinculadas(id);
+  if (totalMovimentacoes > 0) {
+    throw {
+      status: 409,
+      message: `Material possui ${totalMovimentacoes} movimentação(ões) de estoque vinculada(s) e não pode ser excluído`,
+    };
+  }
+
+  await materialRepository.deletar(id);
+  return { message: 'Material removido com sucesso' };
+}
+
+// Gera o QR Code do material (o mesmo utilitário já usado nos pacotes
+// de esterilização), com id, nome e código de barras codificados.
+async function obterQRCode(id) {
+  const material = await buscarPorId(id);
+  const texto = `material:${material.id}|codigo_barras:${material.codigo_barras}|nome:${material.nome}`;
+  const qr_code = await gerarQRCode(texto);
+  return { material_id: material.id, nome: material.nome, qr_code };
+}
+
+// O código de barras já é obrigatório no cadastro do material — aqui só
+// devolvemos esse valor pronto pro front desenhar (ex.: com JsBarcode),
+// sem gerar nenhuma imagem no servidor.
+async function obterCodigoBarras(id) {
+  const material = await buscarPorId(id);
+  if (!material.codigo_barras) {
+    throw { status: 404, message: 'Este material não possui código de barras cadastrado' };
+  }
+  return { material_id: material.id, nome: material.nome, codigo_barras: material.codigo_barras };
+}
+
+module.exports = {
+  listar, buscarPorId, criar, atualizar, deletar, comCamposCalculados,
+  obterQRCode, obterCodigoBarras,
+};

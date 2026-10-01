@@ -1,3 +1,106 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+/* Shared by every student, coordinator and professor route. */
+.clinical-shell { width: 100%; height: 100vh; height: 100dvh; background: #f9fafb; }
+.clinical-frame { display: flex; flex-direction: column; width: 100%; height: 100%; overflow: hidden; }
+.clinical-content { display: flex; flex-direction: column; flex: 1; min-width: 0; min-height: 0; overflow-y: auto; }
+.clinical-content > * { flex: 1; min-width: 0; }
+.clinical-navigation {
+  display: flex; align-items: center; justify-content: space-between; flex-shrink: 0;
+  background: #3b44a8; padding: 8px 4px calc(8px + env(safe-area-inset-bottom));
+  min-height: 72px; z-index: 20;
+}
+.clinical-navigation button { min-height: 44px; min-width: 0; }
+.clinical-navigation button:focus-visible { outline: 2px solid #f9a814; outline-offset: -2px; }
+.reception-shell { height: 100dvh; }
+@media screen and (max-width: 767px) {
+  .reception-sidebar { width: 76px; overflow-y: auto; }
+  .reception-sidebar > div > div:first-child { padding: 12px 4px; }
+  .reception-sidebar h2 { font-size: 10px; letter-spacing: 0; text-align: center; }
+  .reception-sidebar nav, .reception-sidebar > div:last-child { padding: 8px; }
+  .reception-sidebar button { justify-content: center; padding: 12px; }
+  .reception-sidebar button svg { flex-shrink: 0; }
+  .reception-sidebar :is(button span, p) {
+    position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px;
+    overflow: hidden; clip-path: inset(50%); white-space: nowrap;
+  }
+}
+
+@media screen and (min-width: 768px) {
+  .clinical-frame { flex-direction: row; }
+  .clinical-navigation {
+    order: -1; width: 240px; flex-direction: column; align-items: stretch;
+    justify-content: flex-start; gap: 8px; padding: 32px 16px; overflow-y: auto;
+  }
+  .clinical-navigation button {
+    flex: 0 0 auto; flex-direction: row; justify-content: flex-start;
+    gap: 12px; padding: 14px 16px; border-radius: 12px;
+  }
+  .clinical-navigation button:hover { background: #ffffff14; }
+  .clinical-navigation button[aria-current="page"] { background: #ffffff1f; }
+  .clinical-navigation span { font-size: 1rem; line-height: 1.5; }
+  .clinical-navigation svg { width: 22px; height: 22px; flex-shrink: 0; }
+  /* Small mobile captions become readable desktop labels, including dialogs.
+     Print styles and the physical dimensions of labels are left intact. */
+  .clinical-content :is(.text-\[7px\], .text-\[7\.5px\], .text-\[8px\], .text-\[9px\], .text-\[10px\], .text-\[11px\], .text-\[13px\], .text-xs) {
+    font-size: .875rem; line-height: 1.5;
+  }
+  .clinical-content .text-sm { font-size: 1rem; line-height: 1.5; }
+  .clinical-content h1 { font-size: 1.5rem; line-height: 1.3; }
+  .clinical-content :is(input, select, textarea) { font-size: 1rem; }
+}
+
+/* ── Leitores de QR-Code e código de barras ──────────────────────────────
+ *
+ * A html5-qrcode injeta um <video> (e às vezes um <canvas> e uma moldura
+ * própria) dentro do elemento que recebe o id do scanner. Classes do
+ * Tailwind aplicadas na <div> não alcançam esses filhos, então o vídeo
+ * ficava no tamanho nativo da câmera: menor que a caixa em uns aparelhos,
+ * transbordando e desalinhado em outros — as cantoneiras amarelas não
+ * batiam com a imagem.
+ *
+ * Estas regras forçam o vídeo a preencher a área de leitura mantendo a
+ * proporção (object-fit: cover), e escondem a moldura/legenda que a
+ * biblioteca desenha por conta própria, já que a tela tem a sua.
+ */
+#scanner-viewport,
+#scanner-viewport-aluno,
+#reader-container {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+}
+
+#scanner-viewport video,
+#scanner-viewport-aluno video,
+#reader-container video,
+#scanner-viewport canvas,
+#scanner-viewport-aluno canvas,
+#reader-container canvas {
+  position: absolute;
+  inset: 0;
+  width: 100% !important;
+  height: 100% !important;
+  object-fit: cover;
+  display: block;
+}
+
+/* A lib insere um <div> com a borda tracejada do "qrbox" e um rodapé com
+   texto de status. Ambos concorrem com a interface da tela. */
+#scanner-viewport__scan_region img,
+#scanner-viewport-aluno__scan_region img,
+#reader-container__scan_region img,
+#scanner-viewport__dashboard,
+#scanner-viewport-aluno__dashboard,
+#reader-container__dashboard {
+  display: none !important;
+}
+
+#scanner-viewport__scan_region,
+#scanner-viewport-aluno__scan_region,
+#reader-container__scan_region {
+  min-height: 0 !important;
+}

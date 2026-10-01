@@ -1,109 +1,41 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { 
-  ArrowLeft, Search, Scan, QrCode, Printer, Plus, ChevronRight 
+import {
+  ArrowLeft, Search, Scan, QrCode, Printer, Plus, ChevronRight, Package
 } from 'lucide-react';
+import api from '../../Services/api';
 
 export default function EstoqueAluno() {
   const navigate = useNavigate();
+  const [erro, setErro] = useState('');
   const [busca, setBusca] = useState('');
+  const [materiais, setMateriais] = useState([]);
+  const [carregando, setCarregando] = useState(true);
 
-  // Resumo do estoque
+  useEffect(() => {
+    api.get('/materiais')
+      .then((res) => setMateriais(res.data))
+      .catch(() => setErro('Não foi possível carregar o estoque do banco.'))
+      .finally(() => setCarregando(false));
+  }, []);
+
+  // Resumo calculado a partir dos campos já vindos prontos do backend
+  // (status_estoque e em_falta são calculados lá, não aqui)
   const resumo = {
-    totalItens: 128,
-    materiaisCriticos: 8,
-    proximosVencimento: 0,
-    semEstoque: 3
+    totalItens: materiais.length,
+    materiaisCriticos: materiais.filter((m) => m.status_estoque === 'Crítico').length,
+    proximosVencimento: materiais.filter((m) => m.proximo_vencimento && new Date(m.proximo_vencimento) >= new Date(new Date().toDateString()) && new Date(m.proximo_vencimento) <= new Date(Date.now() + 30 * 86400000)).length,
+    semEstoque: materiais.filter((m) => Number(m.quantidade) === 0).length,
   };
-
-  // Lista de materiais cadastrados
-  const materiais = [
-    {
-      nome: "Kit Cirúrgico 01",
-      embalagem: "(1 Un)",
-      codigo: "125794216646",
-      lote: "2026-04-15",
-      val: "15/04/2030",
-      qtd: 30,
-      imagem: "https://placehold.co/100x100/e2e8f0/475569?text=Kit",
-      tipo: "Consumo",
-      categoria: "Cirurgia",
-      estoqueAtual: 30,
-      estoqueMinimo: 10,
-      estoqueIdeal: 40,
-      emFalta: 10,
-      fabricante: "Prevenção Cia",
-      anvisa: "80123456789",
-      dataEntrada: "10/01/2026",
-      unidadeMedida: "Unidade"
-    },
-    {
-      nome: "Luva Descartável",
-      embalagem: "(2 Un)",
-      codigo: "36589103001645354",
-      lote: "2026-02-07",
-      val: "08/09/3034",
-      qtd: 81,
-      imagem: "https://placehold.co/100x100/e2e8f0/475569?text=Luva",
-      tipo: "Descartável",
-      categoria: "Luvas",
-      estoqueAtual: 81,
-      estoqueMinimo: 20,
-      estoqueIdeal: 100,
-      emFalta: 19,
-      fabricante: "Luvax Luvas",
-      anvisa: "103478465126",
-      dataEntrada: "05/02/2026",
-      unidadeMedida: "Caixa c/ 50 pares"
-    },
-    {
-      nome: "Seringa Carpule",
-      embalagem: "(1 Un)",
-      codigo: "859648430000545",
-      lote: "2025-12-28",
-      val: "Indeterminado",
-      qtd: 1,
-      imagem: "https://placehold.co/100x100/e2e8f0/475569?text=Seringa",
-      tipo: "Instrumental",
-      categoria: "Dentística",
-      estoqueAtual: 1,
-      estoqueMinimo: 10,
-      estoqueIdeal: 20,
-      emFalta: 19,
-      fabricante: "OdontoMed Brasil",
-      anvisa: "40321569874",
-      dataEntrada: "28/12/2025",
-      unidadeMedida: "Unidade"
-    },
-    {
-      nome: "Gaze",
-      embalagem: "(3 Un)",
-      codigo: "18279813055465",
-      lote: "2026-01-31",
-      val: "20/07/2029",
-      qtd: 100,
-      imagem: "https://placehold.co/100x100/e2e8f0/475569?text=Gaze",
-      tipo: "Consumo",
-      categoria: "Periodontia",
-      estoqueAtual: 100,
-      estoqueMinimo: 30,
-      estoqueIdeal: 150,
-      emFalta: 50,
-      fabricante: "MediTextil",
-      anvisa: "70258963147",
-      dataEntrada: "15/01/2026",
-      unidadeMedida: "Pacote"
-    }
-  ];
 
   // Filtro dinâmico da busca
   const materiaisFiltrados = materiais.filter((item) => {
     const termo = busca.toLowerCase().trim();
     return (
       item.nome.toLowerCase().includes(termo) ||
-      item.codigo.toLowerCase().includes(termo) ||
-      item.lote.toLowerCase().includes(termo) ||
-      item.categoria.toLowerCase().includes(termo)
+      (item.codigo_barras || '').toLowerCase().includes(termo) ||
+      (item.lote || '').toLowerCase().includes(termo) ||
+      (item.categoria_nome || '').toLowerCase().includes(termo)
     );
   });
 
@@ -127,6 +59,7 @@ export default function EstoqueAluno() {
       {/* CONTEÚDO ROLÁVEL */}
       <div className="flex-1 overflow-y-auto px-5 py-5 space-y-5 pb-24">
         
+        {erro && <p role="alert" className="text-red-600 p-3">{erro}</p>}
         {/* BARRA DE BUSCA */}
         <div className="relative w-full">
           <input
@@ -163,7 +96,7 @@ export default function EstoqueAluno() {
         {/* IMPRESSÃO DE ETIQUETAS */}
         <button 
           type="button" 
-          onClick={() => navigate('/app/aluno/estoque/materiais', { state: { modo: 'impressao' } })}
+          onClick={() => navigate('/app/aluno/estoque/configurar-etiqueta')}
           className="w-full bg-[#DCE0F5] hover:bg-[#ccd1ee] active:scale-[0.99] text-[#3B44A8] py-4 px-5 rounded-2xl flex items-center justify-center gap-3 shadow-xs border border-[#3B44A8]/10 transition-all font-bold text-xs cursor-pointer"
         >
           <Printer size={20} />
@@ -186,20 +119,20 @@ export default function EstoqueAluno() {
           
           <div className="grid grid-cols-4 gap-1.5 bg-white border border-gray-200 rounded-2xl p-3 shadow-xs divide-x divide-gray-100 text-center select-none">
             <div>
-              <span className="block text-[8px] font-bold text-gray-900 leading-tight">Total de itens</span>
-              <span className="block text-lg font-black text-[#3B44A8] mt-1">{resumo.totalItens}</span>
+              <span className="flex items-center justify-center min-h-8 text-[8px] font-bold text-gray-900 leading-tight">Total de itens</span>
+              <span className="block text-lg font-black text-[#3B44A8] mt-1">{carregando || erro ? '—' : resumo.totalItens}</span>
             </div>
             <div>
-              <span className="block text-[8px] font-bold text-gray-900 leading-tight">Materiais críticos</span>
-              <span className="block text-lg font-black text-[#3B44A8] mt-1">{resumo.materiaisCriticos}</span>
+              <span className="flex items-center justify-center min-h-8 text-[8px] font-bold text-gray-900 leading-tight">Materiais críticos</span>
+              <span className="block text-lg font-black text-[#3B44A8] mt-1">{carregando || erro ? '—' : resumo.materiaisCriticos}</span>
             </div>
             <div>
-              <span className="block text-[8px] font-bold text-gray-900 leading-tight">Próximos ao vencimento</span>
-              <span className="block text-lg font-black text-[#3B44A8] mt-1">{resumo.proximosVencimento}</span>
+              <span className="flex items-center justify-center min-h-8 text-[8px] font-bold text-gray-900 leading-tight">Próximos ao vencimento</span>
+              <span className="block text-lg font-black text-[#3B44A8] mt-1">{carregando || erro ? '—' : resumo.proximosVencimento}</span>
             </div>
             <div>
-              <span className="block text-[8px] font-bold text-gray-900 leading-tight">Itens sem estoque</span>
-              <span className="block text-lg font-black text-[#3B44A8] mt-1">{resumo.semEstoque}</span>
+              <span className="flex items-center justify-center min-h-8 text-[8px] font-bold text-gray-900 leading-tight">Itens sem estoque</span>
+              <span className="block text-lg font-black text-[#3B44A8] mt-1">{carregando || erro ? '—' : resumo.semEstoque}</span>
             </div>
           </div>
         </div>
@@ -218,10 +151,12 @@ export default function EstoqueAluno() {
           </div>
 
           <div className="bg-white border border-gray-200 rounded-2xl overflow-hidden shadow-xs divide-y divide-gray-100">
-            {materiaisFiltrados.length > 0 ? (
-              materiaisFiltrados.map((item, index) => (
-                <div 
-                  key={index}
+            {carregando ? (
+              <div className="p-6 text-center text-gray-400 text-xs">Carregando materiais...</div>
+            ) : materiaisFiltrados.length > 0 ? (
+              materiaisFiltrados.map((item) => (
+                <div
+                  key={item.id}
                   onClick={() => navigate('/app/aluno/estoque/detalhes', { state: { material: item } })}
                   role="button"
                   tabIndex={0}
@@ -233,27 +168,25 @@ export default function EstoqueAluno() {
                   className="p-3.5 flex items-center justify-between hover:bg-gray-50/60 transition cursor-pointer"
                 >
                   <div className="flex items-center gap-3 min-w-0">
-                    <img 
-                      src={item.imagem} 
-                      alt={item.nome}
-                      className="w-12 h-12 rounded-xl object-cover border border-gray-100 bg-gray-50 shrink-0"
-                    />
-                    
+                    <div className="w-12 h-12 rounded-xl border border-gray-100 bg-gray-50 shrink-0 flex items-center justify-center text-gray-400">
+                      <Package size={20} />
+                    </div>
+
                     <div className="min-w-0">
                       <h3 className="font-bold text-gray-900 text-xs leading-tight truncate">{item.nome}</h3>
-                      <p className="text-gray-500 text-[9px] font-semibold leading-tight">{item.embalagem}</p>
-                      <p className="text-gray-400 text-[8px] mt-0.5 leading-none">Código: {item.codigo}</p>
-                      
+                      <p className="text-gray-500 text-[9px] font-semibold leading-tight">{item.categoria_nome}</p>
+                      <p className="text-gray-400 text-[8px] mt-0.5 leading-none">Código: {item.codigo_barras}</p>
+
                       <div className="flex gap-2.5 mt-1 text-[8px] text-gray-400 font-semibold leading-none">
-                        <span>Lote: {item.lote}</span>
-                        <span>Val: {item.val}</span>
+                        <span>Lote: {item.lote || 'N/I'}</span>
+                        <span>Val: {item.validade ? new Date(item.validade).toLocaleDateString('pt-BR') : 'Indeterminado'}</span>
                       </div>
                     </div>
                   </div>
 
                   <div className="flex items-center gap-2 shrink-0">
                     <span className="bg-[#DCE0F5] text-[#3B44A8] text-[9px] font-bold px-2 py-1.5 rounded-lg whitespace-nowrap">
-                      Qtd: {item.qtd}
+                      Qtd: {item.quantidade}
                     </span>
                     <ChevronRight size={16} className="text-[#3B44A8]" />
                   </div>
@@ -261,7 +194,7 @@ export default function EstoqueAluno() {
               ))
             ) : (
               <div className="p-6 text-center text-gray-400 text-xs">
-                Nenhum material encontrado para "<span className="font-semibold text-gray-600">{busca}</span>".
+                Nenhum material encontrado para &quot;<span className="font-semibold text-gray-600">{busca}</span>&quot;.
               </div>
             )}
           </div>

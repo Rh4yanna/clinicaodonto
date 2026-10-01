@@ -2,15 +2,26 @@ import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Settings, Bell, Calendar, ChevronRight, User } from 'lucide-react';
 import api from '../../Services/api';
+import { useAuth } from '../../context/auth';
+import { useContagemNaoLidas } from '../../hooks/useNotificacoes';
 
 export default function DashboardAluno() {
   const navigate = useNavigate();
+  const { usuario } = useAuth();
+  const [erro, setErro] = useState('');
+  const [carregando, setCarregando] = useState(true);
   const [dataAtual, setDataAtual] = useState('');
-  const [nomeUsuario, setNomeUsuario] = useState('Aluno');
-  const [temNotificacoes, setTemNotificacoes] = useState(true);
+  // Antes isto era um useState fixo em `false` que nunca era atualizado —
+  // o badge do sino nunca aparecia. Agora vem do backend.
+  const { total: totalNaoLidas } = useContagemNaoLidas();
+  const temNotificacoes = totalNaoLidas > 0;
+  const [consultasHoje, setConsultasHoje] = useState([]);
+  const [cirurgiasHoje, setCirurgiasHoje] = useState([]);
+  const [pacientesPorId, setPacientesPorId] = useState({});
+
+  const nomeUsuario = usuario?.nome?.split(' ')[0] || 'Aluno';
 
   useEffect(() => {
-    // 1. Formatação da Data Atual
     const obterDataFormatada = () => {
       const data = new Date();
       const opcoes = { day: 'numeric', month: 'long', year: 'numeric' };
@@ -23,49 +34,32 @@ export default function DashboardAluno() {
     };
     setDataAtual(obterDataFormatada());
 
-    // 2. Busca do Nome do Usuário
-    const carregarUsuario = async () => {
+    const carregarDados = async () => {
       try {
-        const response = await api.get('/auth/me');
-        if (response.data?.nome) {
-          const primeiroNome = response.data.nome.split(' ')[0];
-          setNomeUsuario(primeiroNome);
-        }
-      } catch (err) {
-        const usuarioSalvo = localStorage.getItem('usuario');
-        if (usuarioSalvo) {
-          try {
-            const parsed = JSON.parse(usuarioSalvo);
-            if (parsed.nome) {
-              setNomeUsuario(parsed.nome.split(' ')[0]);
-            }
-          } catch {
-            // Mantém fallback 'Aluno' ou 'Rhaya'
-            setNomeUsuario('Rhaya');
-          }
-        }
-      }
+        setDataAtual(obterDataFormatada());
+        const [consultasRes, cirurgiasRes, pacientesRes] = await Promise.all([
+          api.get('/consultas'),
+          api.get('/cirurgias'),
+          api.get('/pacientes'),
+        ]);
+
+        const nomePorId = {};
+        pacientesRes.data.forEach((p) => { nomePorId[p.id] = p.nome; });
+        setPacientesPorId(nomePorId);
+
+        const hojeStr = new Date().toDateString();
+        setConsultasHoje(consultasRes.data.filter((c) => new Date(c.data_hora).toDateString() === hojeStr && !['cancelada','faltou'].includes(c.status)).sort((a,b)=>new Date(a.data_hora)-new Date(b.data_hora)));
+        setCirurgiasHoje(cirurgiasRes.data.filter((c) => new Date(c.data_hora).toDateString() === hojeStr));
+        setErro('');
+      } catch { setErro('Não foi possível carregar seus atendimentos do banco.'); }
+      finally { setCarregando(false); }
     };
 
-    carregarUsuario();
+    carregarDados();
+    const timer = setInterval(carregarDados, 30000);
+    window.addEventListener('focus', carregarDados);
+    return () => { clearInterval(timer); window.removeEventListener('focus', carregarDados); };
   }, []);
-
-  const cirurgiasHoje = [
-    {
-      horario: "08:30",
-      paciente: "Rhaya Borges",
-      procedimento: "Exodontia - 36",
-      professor: "Prof. Dr. Carlos Eduardo",
-      local: "Centro Cirúrgico"
-    },
-    {
-      horario: "15:30",
-      paciente: "Maria Silva",
-      procedimento: "Extração de siso",
-      professor: "Prof. Dra. Ana Maria",
-      local: "Centro Cirúrgico"
-    }
-  ];
 
   return (
     <div className="flex-1 flex flex-col min-h-0 bg-white font-sans">
@@ -100,6 +94,8 @@ export default function DashboardAluno() {
       {/* CONTEÚDO ROLÁVEL - Dashboard */}
       <div className="flex-1 overflow-y-auto px-5 py-6 space-y-6">
         
+        {erro && <p role="alert" className="bg-red-50 text-red-600 p-3 rounded-xl">{erro}</p>}
+        {carregando && <p role="status">Carregando seus atendimentos...</p>}
         {/* Saudação */}
         <div className="select-none">
           <h2 className="text-slate-900 text-2xl font-extrabold leading-tight">
@@ -122,8 +118,8 @@ export default function DashboardAluno() {
             className="bg-white border border-slate-200 hover:border-[#3B42B2]/40 rounded-2xl p-4 text-center shadow-xs transition cursor-pointer active:scale-95"
           >
             <span className="block text-slate-900 font-extrabold text-xs leading-tight">Consultas do dia</span>
-            <span className="block text-3xl font-extrabold text-[#3B42B2] my-1.5">3</span>
-            <span className="block text-[10px] font-semibold text-slate-600">Confirmadas</span>
+            <span className="block text-3xl font-extrabold text-[#3B42B2] my-1.5">{carregando || erro ? '—' : consultasHoje.length}</span>
+            <span className="block text-[10px] font-semibold text-slate-600">Agendadas</span>
           </button>
 
           {/* Card de Cirurgias */}
@@ -132,10 +128,11 @@ export default function DashboardAluno() {
             className="bg-white border border-slate-200 hover:border-[#3B42B2]/40 rounded-2xl p-4 text-center shadow-xs transition cursor-pointer active:scale-95"
           >
             <span className="block text-slate-900 font-extrabold text-xs leading-tight">Cirurgias do dia</span>
-            <span className="block text-3xl font-extrabold text-[#3B42B2] my-1.5">2</span>
-            <span className="block text-[10px] font-semibold text-slate-600">Confirmadas</span>
+            <span className="block text-3xl font-extrabold text-[#3B42B2] my-1.5">{carregando || erro ? '—' : cirurgiasHoje.length}</span>
+            <span className="block text-[10px] font-semibold text-slate-600">Agendadas</span>
           </button>
         </div>
+
 
         {/* Próximos Atendimentos */}
         <div className="space-y-3">
@@ -150,24 +147,28 @@ export default function DashboardAluno() {
           </div>
 
           <div className="bg-white border border-slate-200 rounded-2xl overflow-hidden shadow-xs divide-y divide-slate-100">
-            <div 
-              onClick={() => navigate('/app/aluno/agenda')}
-              className="p-4 flex items-center justify-between hover:bg-slate-50 transition cursor-pointer"
-            >
-              <div className="text-slate-500 font-medium text-xs w-10 pr-1 text-center">09:30</div>
-              <div className="w-[1px] h-8 bg-slate-200 mr-3"></div>
-              <div className="flex-1 min-w-0">
-                <h4 className="font-bold text-slate-900 text-xs truncate">Maria Silva</h4>
-                <p className="text-slate-700 text-[11px] font-semibold">Clareamento Dental</p>
-                <p className="text-slate-400 text-[9px] font-medium">Dentística</p>
-              </div>
-              <div className="ml-2 flex items-center gap-1 text-[#3B42B2]">
-                <span className="inline-block bg-[#DCE0F5] text-[#3B42B2] text-[8px] font-bold px-2 py-1 rounded-full whitespace-nowrap">
-                  Clínica 2
-                </span>
-                <ChevronRight size={16} />
-              </div>
-            </div>
+            {carregando || erro ? <p className="p-4 text-xs">{erro ? 'Dados indisponíveis.' : 'Carregando...'}</p> : consultasHoje.length === 0 ? (
+              <div className="p-6 text-center text-xs text-slate-400 font-medium">Nenhuma consulta hoje.</div>
+            ) : (
+              consultasHoje.slice(0, 3).map((c) => (
+                <div
+                  key={c.id}
+                  onClick={() => navigate('/app/aluno/agenda')}
+                  className="p-4 flex items-center justify-between hover:bg-slate-50 transition cursor-pointer"
+                >
+                  <div className="text-slate-500 font-medium text-xs w-10 pr-1 text-center">
+                    {new Date(c.data_hora).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}
+                  </div>
+                  <div className="w-[1px] h-8 bg-slate-200 mr-3"></div>
+                  <div className="flex-1 min-w-0">
+                    <h4 className="font-bold text-slate-900 text-xs truncate">{pacientesPorId[c.paciente_id] || 'Paciente'}</h4>
+                    <p className="text-slate-700 text-[11px] font-semibold">{c.queixa_principal || 'Consulta'}</p>
+                    <p className="text-slate-400 text-[9px] font-medium capitalize">{c.status}</p>
+                  </div>
+                  <ChevronRight size={16} className="text-[#3B42B2]" />
+                </div>
+              ))
+            )}
           </div>
         </div>
 
@@ -184,29 +185,35 @@ export default function DashboardAluno() {
           </div>
 
           <div className="bg-white border border-slate-200 rounded-2xl overflow-hidden shadow-xs divide-y divide-slate-100">
-            {cirurgiasHoje.map((cirurgia, idx) => (
-              <div 
-                key={idx} 
-                onClick={() => navigate('/app/aluno/cirurgias')}
-                className="p-4 flex items-center justify-between hover:bg-slate-50 transition cursor-pointer"
-              >
-                <div className="text-slate-500 font-medium text-xs w-10 pr-1 text-center">{cirurgia.horario}</div>
-                <div className="w-[1px] h-10 bg-slate-200 mr-3"></div>
-                <div className="flex-1 flex items-center gap-2.5 min-w-0">
-                  <div className="w-8 h-8 bg-slate-100 rounded-full border border-slate-200 flex items-center justify-center shrink-0">
-                    <User size={16} className="text-slate-400" />
+            {cirurgiasHoje.length === 0 ? (
+              <div className="p-6 text-center text-xs text-slate-400 font-medium">Nenhuma cirurgia hoje.</div>
+            ) : (
+              cirurgiasHoje.map((cirurgia) => (
+                <div
+                  key={cirurgia.id}
+                  onClick={() => navigate('/app/aluno/cirurgias')}
+                  className="p-4 flex items-center justify-between hover:bg-slate-50 transition cursor-pointer"
+                >
+                  <div className="text-slate-500 font-medium text-xs w-10 pr-1 text-center">
+                    {new Date(cirurgia.data_hora).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}
                   </div>
-                  <div className="min-w-0">
-                    <h4 className="font-bold text-slate-900 text-xs truncate">{cirurgia.paciente}</h4>
-                    <p className="text-[#3B42B2] text-[11px] font-semibold">{cirurgia.procedimento}</p>
-                    <p className="text-slate-400 text-[9px] font-medium leading-none mt-0.5">{cirurgia.professor}</p>
+                  <div className="w-[1px] h-10 bg-slate-200 mr-3"></div>
+                  <div className="flex-1 flex items-center gap-2.5 min-w-0">
+                    <div className="w-8 h-8 bg-slate-100 rounded-full border border-slate-200 flex items-center justify-center shrink-0">
+                      <User size={16} className="text-slate-400" />
+                    </div>
+                    <div className="min-w-0">
+                      <h4 className="font-bold text-slate-900 text-xs truncate">{pacientesPorId[cirurgia.paciente_id] || 'Paciente'}</h4>
+                      <p className="text-[#3B42B2] text-[11px] font-semibold">{cirurgia.tipo_cirurgia || 'Cirurgia'}</p>
+                      <p className="text-slate-400 text-[9px] font-medium leading-none mt-0.5 capitalize">{cirurgia.status}</p>
+                    </div>
+                  </div>
+                  <div className="pl-2 text-[#3B42B2]">
+                    <ChevronRight size={18} />
                   </div>
                 </div>
-                <div className="pl-2 text-[#3B42B2]">
-                  <ChevronRight size={18} />
-                </div>
-              </div>
-            ))}
+              ))
+            )}
           </div>
         </div>
 
